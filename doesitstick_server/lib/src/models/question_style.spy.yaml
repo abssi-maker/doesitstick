@@ -1,0 +1,6 @@
+### How a question probes understanding.
+enum: QuestionStyle
+values:
+  - solve
+  - explain
+  - catchMistake

@@ -1,0 +1,9 @@
+class: ConceptDigest
+fields:
+  conceptId: ConceptId
+  title: String
+  ### stuck | growing | waiting
+  status: String
+  reason: String
+  evidence: List<EvidenceItem>
+  nextRecheckAt: DateTime?

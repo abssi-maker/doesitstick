@@ -1,0 +1,4 @@
+enum: CardKind
+values:
+  - tonight
+  - recheck

@@ -1,0 +1,22 @@
+### One question to ask out loud. Every number in it was produced and
+### re-checked by server code before the card was published.
+class: Question
+table: question
+fields:
+  cardId: int, relation(parent=question_card, onDelete=Cascade)
+  familyId: int
+  position: int
+  conceptId: ConceptId
+  style: QuestionStyle
+  seed: int
+  operands: List<int>
+  prompt: String
+  expectedAnswer: String
+  answerValue: int
+  shownWrong: int?
+  methodNote: String
+  listenFor: String
+  hint: String
+  checkedByCode: bool
+  ### Set on re-check questions: the question this is a new variant of.
+  variantOfQuestionId: int?

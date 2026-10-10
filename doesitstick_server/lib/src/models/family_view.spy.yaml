@@ -1,0 +1,8 @@
+class: FamilyView
+fields:
+  familyId: int
+  childName: String
+  inviteCode: String
+  me: String
+  parents: List<String>
+  shareUrl: String?

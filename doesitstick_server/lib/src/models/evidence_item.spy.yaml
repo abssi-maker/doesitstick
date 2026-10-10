@@ -1,0 +1,7 @@
+class: EvidenceItem
+fields:
+  at: DateTime
+  recheckDay: int
+  style: QuestionStyle
+  outcome: Outcome
+  parentName: String

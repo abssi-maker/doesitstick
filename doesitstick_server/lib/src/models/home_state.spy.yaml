@@ -1,0 +1,7 @@
+class: HomeState
+fields:
+  family: FamilyView
+  worksheets: List<Worksheet>
+  cards: List<CardView>
+  rechecks: List<Recheck>
+  aiReaderEnabled: bool

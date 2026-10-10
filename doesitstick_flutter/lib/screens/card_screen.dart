@@ -1,0 +1,492 @@
+import 'dart:async';
+
+import 'package:doesitstick_client/doesitstick_client.dart';
+import 'package:flutter/material.dart';
+
+import '../state/family_controller.dart';
+import '../theme/tokens.dart';
+import '../widgets/common.dart';
+import 'home_shell.dart';
+import 'tonight_screen.dart';
+
+const _styleLabel = {
+  QuestionStyle.solve: 'Answer it',
+  QuestionStyle.explain: 'Explain it',
+  QuestionStyle.catchMistake: 'Catch the mistake',
+};
+
+const _outcomes = [
+  (Outcome.notYet, '🌱', 'Not yet'),
+  (Outcome.withHint, '💡', 'With a hint'),
+  (Outcome.gotAnswer, '✓', 'Got the answer'),
+  (Outcome.explainedWhy, '★', 'Explained why'),
+];
+
+/// The question card: three questions, answers and the method note in view,
+/// one tap per question. Built to finish in about two minutes.
+class CardScreen extends StatefulWidget {
+  final int cardId;
+  const CardScreen({super.key, required this.cardId});
+
+  @override
+  State<CardScreen> createState() => _CardScreenState();
+}
+
+class _CardScreenState extends State<CardScreen> {
+  final _watch = Stopwatch()..start();
+  Timer? _tick;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  String _mmss(Duration d) =>
+      '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    final c = FamilyScope.of(context);
+    final card = c.cardById(widget.cardId);
+    final t = Theme.of(context).textTheme;
+    if (card == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    final marked = card.questions
+        .where((q) => c.effectiveMark(q) != null)
+        .length;
+    final done = marked == card.questions.length;
+    if (done && _watch.isRunning) _watch.stop();
+    final isRecheck = card.card.kind == CardKind.recheck;
+    final next = c.home!.rechecks
+        .where(
+          (r) =>
+              r.sourceCardId == card.card.id &&
+              r.status == RecheckStatus.scheduled,
+        )
+        .toList();
+    final worksheet = c.home!.worksheets
+        .where((w) => w.cardId == card.card.id)
+        .firstOrNull;
+    final canChangeTopic =
+        !isRecheck &&
+        worksheet != null &&
+        card.questions.every((q) => q.marks.isEmpty) &&
+        c.outbox.every(
+          (m) => card.questions.every((q) => q.question.id != m.questionId),
+        );
+
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: C.cream,
+        surfaceTintColor: C.cream,
+        title: Text(
+          isRecheck
+              ? 'Day ${card.card.recheckDay} re-check'
+              : 'Tonight’s 3 questions',
+          style: t.titleMedium,
+        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Pill(
+              done
+                  ? 'Done in ${_mmss(_watch.elapsed)}'
+                  : '⏱ ${_mmss(_watch.elapsed)}',
+              bg: done ? C.mintS : C.grapeS,
+              fg: done ? C.mintT : C.grapeT,
+            ),
+          ),
+        ],
+      ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(22, 4, 22, 32),
+            children: [
+              const Align(alignment: Alignment.centerLeft, child: SyncChip()),
+              const SizedBox(height: 12),
+              Text(card.conceptTitle, style: t.headlineSmall),
+              const SizedBox(height: 10),
+              Panel(
+                color: C.skyS,
+                padding: const EdgeInsets.all(14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'How the class does it · ${card.methodName}',
+                      style: t.bodySmall!.copyWith(
+                        color: C.skyT,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      card.methodLine,
+                      style: t.bodyMedium!.copyWith(color: C.skyT),
+                    ),
+                  ],
+                ),
+              ),
+              if (isRecheck) ...[
+                const SizedBox(height: 10),
+                const Stick(says: 'Same idea, brand-new numbers.', mood: '🔁'),
+              ],
+              const SizedBox(height: 16),
+              for (var i = 0; i < card.questions.length; i++) ...[
+                _QuestionTile(index: i, view: card.questions[i]),
+                const SizedBox(height: 14),
+              ],
+              if (done)
+                Panel(
+                  color: C.mintS,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        isRecheck ? 'Re-check done 🎉' : 'Done, together 🎉',
+                        style: t.titleLarge!.copyWith(color: C.mintT),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        next.isEmpty
+                            ? (isRecheck
+                                  ? 'This counts toward the weekly “what stuck”.'
+                                  : 'Scheduling the re-checks…')
+                            : 'Next check: ${next.map((r) => '${shortDate(r.dueAt)} (day ${r.dayOffset})').join(' and ')} · new numbers',
+                        style: t.bodyMedium!.copyWith(color: C.mintT),
+                      ),
+                    ],
+                  ),
+                ),
+              if (canChangeTopic) ...[
+                const SizedBox(height: 6),
+                TextButton(
+                  onPressed: () async {
+                    await showTopicSheet(context, worksheetId: worksheet.id);
+                    if (context.mounted) Navigator.of(context).pop();
+                  },
+                  child: const Text('Not this topic?'),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _QuestionTile extends StatefulWidget {
+  final int index;
+  final QuestionView view;
+  const _QuestionTile({required this.index, required this.view});
+
+  @override
+  State<_QuestionTile> createState() => _QuestionTileState();
+}
+
+class _QuestionTileState extends State<_QuestionTile> {
+  bool _help = false;
+
+  String _syncWords(FamilyController c, EffectiveMark m) {
+    final partner = c.partner;
+    switch (m.sync) {
+      case MarkSync.savedOnPhone:
+        return 'Saved on this phone';
+      case MarkSync.sending:
+        return 'Sending…';
+      case MarkSync.shared:
+        if (m.by != c.me) return 'Marked by ${m.by}';
+        return partner == null ? 'Saved' : 'Saved · shared with $partner';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = FamilyScope.of(context);
+    final t = Theme.of(context).textTheme;
+    final q = widget.view.question;
+    final mark = c.effectiveMark(widget.view);
+    return Panel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: mark != null ? C.mint : C.grapeS,
+                child: Text(
+                  '${widget.index + 1}',
+                  style: TextStyle(
+                    color: mark != null ? Colors.white : C.grapeT,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Flexible(
+                child: Text(_styleLabel[q.style]!, style: t.titleMedium),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text('Say:', style: t.bodySmall),
+          Text('“${q.prompt}”', style: t.titleLarge!.copyWith(fontSize: 23)),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: C.cream,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: C.line, width: 2),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text('Answer', style: t.bodySmall),
+                    const Spacer(),
+                    const Text(
+                      '👁 only you',
+                      style: TextStyle(fontSize: 12, color: C.ink2),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                Text(q.expectedAnswer, style: t.titleMedium),
+                if (q.checkedByCode) ...[
+                  const SizedBox(height: 4),
+                  const Text(
+                    '✓ Answer checked by code',
+                    style: TextStyle(
+                      color: C.mintT,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          TextButton.icon(
+            onPressed: () => setState(() => _help = !_help),
+            icon: Icon(
+              _help ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+            ),
+            label: Text(_help ? 'Hide' : 'What a “why” sounds like'),
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+          ),
+          if (_help) ...[
+            Text(
+              'Listen for',
+              style: t.bodySmall!.copyWith(fontWeight: FontWeight.w600),
+            ),
+            Text(q.listenFor, style: t.bodyMedium),
+            const SizedBox(height: 6),
+            Text(q.methodNote, style: t.bodySmall),
+            const SizedBox(height: 10),
+          ],
+          HintLadder(
+            hint: q.hint,
+            bigHint: q.methodNote,
+            onKindExit: () => c.mark(q, Outcome.notYet),
+          ),
+          const SizedBox(height: 8),
+          const SizedBox(height: 4),
+          Text('What did you hear?', style: t.bodySmall),
+          const SizedBox(height: 6),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            childAspectRatio: 3.3,
+            children: [
+              for (final (o, icon, label) in _outcomes)
+                _OutcomeButton(
+                  key: Key('mark-${q.id}-${o.name}'),
+                  icon: icon,
+                  label: label,
+                  outcome: o,
+                  selected: mark?.outcome == o,
+                  onTap: () => c.mark(q, o),
+                ),
+            ],
+          ),
+          if (mark != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              _syncWords(c, mark),
+              style: t.bodySmall!.copyWith(
+                color: mark.sync == MarkSync.shared ? C.mintT : C.sunT,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _OutcomeButton extends StatelessWidget {
+  final String icon;
+  final String label;
+  final Outcome outcome;
+  final bool selected;
+  final VoidCallback onTap;
+  const _OutcomeButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.outcome,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final (bg, fg) = switch (outcome) {
+      Outcome.notYet => (C.coralS, C.coralT),
+      Outcome.withHint => (C.sunS, C.sunT),
+      Outcome.gotAnswer => (C.skyS, C.skyT),
+      Outcome.explainedWhy => (C.mintS, C.mintT),
+    };
+    return AnimatedScale(
+      scale: selected ? 1.0 : 0.97,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOutBack,
+      child: Material(
+        color: selected ? bg : C.paper,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: selected ? fg : C.line, width: 2),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: onTap,
+          child: Center(
+            child: Text(
+              '$icon  $label',
+              style: TextStyle(
+                color: selected ? fg : C.ink,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One rung at a time, ending with a kind exit, so a stuck moment never
+/// turns into a confrontation. Using a hint means success gets marked
+/// "With a hint", kept apart from independent success.
+class HintLadder extends StatefulWidget {
+  final String hint;
+  final String bigHint;
+  final VoidCallback onKindExit;
+  const HintLadder({
+    super.key,
+    required this.hint,
+    required this.bigHint,
+    required this.onKindExit,
+  });
+
+  @override
+  State<HintLadder> createState() => _HintLadderState();
+}
+
+class _HintLadderState extends State<HintLadder> {
+  int _rung = 0;
+
+  Widget _rungBox(String label, String text) {
+    final t = Theme.of(context).textTheme;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: C.sunS,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: t.bodySmall!.copyWith(
+              color: C.sunT,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(text, style: t.bodyMedium!.copyWith(color: C.sunT)),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_rung >= 1)
+          _rungBox('💡 Hint · read this aloud', '“${widget.hint}”'),
+        if (_rung >= 2)
+          _rungBox('Bigger hint · walk through it together', widget.bigHint),
+        if (_rung >= 3)
+          _rungBox(
+            '♡ Kind ending · say this, then stop',
+            '“Great one to ask your teacher about tomorrow!”',
+          ),
+        if (_rung >= 1 && _rung < 3)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              'If they get it now, mark “With a hint”.',
+              style: t.bodySmall!.copyWith(color: C.sunT),
+            ),
+          ),
+        if (_rung < 3)
+          TextButton(
+            key: const Key('nextHint'),
+            style: TextButton.styleFrom(
+              padding: EdgeInsets.zero,
+              foregroundColor: C.sunT,
+            ),
+            onPressed: () {
+              setState(() => _rung++);
+              if (_rung == 3) widget.onKindExit();
+            },
+            child: Text(switch (_rung) {
+              0 => '🌱 Stuck? Give a hint',
+              1 => 'Still stuck? Bigger hint',
+              _ => 'Still stuck? Kind ending',
+            }),
+          ),
+      ],
+    );
+  }
+}

@@ -1,0 +1,8 @@
+### Pushed to both parents' phones over the family stream.
+class: FamilyEvent
+fields:
+  kind: String
+  message: String
+  actorName: String?
+  cardId: int?
+  at: DateTime

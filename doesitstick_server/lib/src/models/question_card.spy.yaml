@@ -1,0 +1,11 @@
+class: QuestionCard
+table: question_card
+fields:
+  familyId: int, relation(parent=family, onDelete=Cascade)
+  conceptId: ConceptId
+  kind: CardKind
+  ### 0 for tonight's card, 2 or 7 for a re-check.
+  recheckDay: int
+  sourceCardId: int?
+  createdAt: DateTime, default=now
+  completedAt: DateTime?

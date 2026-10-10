@@ -1,0 +1,7 @@
+### What the parent heard. Hinted success is kept apart from independent success.
+enum: Outcome
+values:
+  - notYet
+  - withHint
+  - gotAnswer
+  - explainedWhy

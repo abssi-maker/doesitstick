@@ -1,0 +1,7 @@
+enum: WorksheetStatus
+values:
+  - uploaded
+  - reading
+  - needsTopic
+  - ready
+  - failed

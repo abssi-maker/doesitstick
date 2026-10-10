@@ -1,0 +1,7 @@
+### Payload sent by the app for each mark, possibly after being queued offline.
+class: MarkInput
+fields:
+  clientMarkId: String
+  questionId: int
+  outcome: Outcome
+  markedAt: DateTime

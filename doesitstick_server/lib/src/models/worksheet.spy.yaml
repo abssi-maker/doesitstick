@@ -1,0 +1,16 @@
+### A photographed worksheet and its trip through the background reader.
+class: Worksheet
+table: worksheet
+fields:
+  familyId: int, relation(parent=family, onDelete=Cascade)
+  uploadedByName: String
+  ### Private storage path. Cleared when the photo is deleted.
+  photoPath: String?, scope=serverOnly
+  status: WorksheetStatus
+  conceptId: ConceptId?
+  ### Problems the reader saw, e.g. "46 x 7". Shown so the parent can confirm.
+  detectedProblems: List<String>?
+  note: String?
+  cardId: int?
+  photoDeletedAt: DateTime?
+  createdAt: DateTime, default=now

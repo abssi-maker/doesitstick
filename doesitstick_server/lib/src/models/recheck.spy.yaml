@@ -1,0 +1,17 @@
+### A scheduled re-check, the durable source of truth behind the future call.
+class: Recheck
+table: recheck
+fields:
+  familyId: int, relation(parent=family, onDelete=Cascade)
+  sourceCardId: int
+  conceptId: ConceptId
+  dayOffset: int
+  dueAt: DateTime
+  status: RecheckStatus
+  cardId: int?
+  ### True when a demo "jump ahead" made it due early.
+  fastForwarded: bool, default=false
+indexes:
+  recheck_source_day_idx:
+    fields: sourceCardId, dayOffset
+    unique: true

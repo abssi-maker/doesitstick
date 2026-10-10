@@ -1,0 +1,5 @@
+enum: RecheckStatus
+values:
+  - scheduled
+  - ready
+  - skipped

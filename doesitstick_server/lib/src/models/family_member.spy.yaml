@@ -1,0 +1,11 @@
+class: FamilyMember
+table: family_member
+fields:
+  familyId: int, relation(parent=family, onDelete=Cascade)
+  authUserId: UuidValue?, scope=serverOnly
+  displayName: String
+  joinedAt: DateTime, default=now
+indexes:
+  family_member_user_idx:
+    fields: authUserId
+    unique: true

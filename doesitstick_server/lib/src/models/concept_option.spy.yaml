@@ -1,0 +1,7 @@
+class: ConceptOption
+fields:
+  conceptId: ConceptId
+  title: String
+  grade: int
+  methodName: String
+  example: String

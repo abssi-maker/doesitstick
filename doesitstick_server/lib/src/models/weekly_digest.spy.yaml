@@ -1,0 +1,8 @@
+class: WeeklyDigest
+fields:
+  childName: String
+  weekStart: DateTime
+  weekEnd: DateTime
+  concepts: List<ConceptDigest>
+  stuckCount: int
+  growingCount: int

@@ -1,0 +1,19 @@
+### A parent's observation. clientMarkId makes offline re-sends idempotent.
+class: Mark
+table: mark
+fields:
+  questionId: int, relation(parent=question, onDelete=Cascade)
+  cardId: int
+  familyId: int
+  outcome: Outcome
+  parentName: String
+  authUserId: UuidValue?, scope=serverOnly
+  clientMarkId: String
+  markedAt: DateTime
+  receivedAt: DateTime, default=now
+indexes:
+  mark_client_idx:
+    fields: clientMarkId
+    unique: true
+  mark_question_idx:
+    fields: questionId

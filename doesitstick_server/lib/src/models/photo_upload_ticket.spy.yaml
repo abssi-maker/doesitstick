@@ -1,0 +1,4 @@
+class: PhotoUploadTicket
+fields:
+  worksheetId: int
+  uploadDescription: String

@@ -1,0 +1,16 @@
+### A household: up to two parents sharing one child's progress.
+class: Family
+table: family
+fields:
+  childName: String
+  inviteCode: String
+  ### Set only when a parent shares the weekly page; revocable.
+  shareToken: String?
+  createdAt: DateTime, default=now
+indexes:
+  family_invite_idx:
+    fields: inviteCode
+    unique: true
+  family_share_idx:
+    fields: shareToken
+    unique: true

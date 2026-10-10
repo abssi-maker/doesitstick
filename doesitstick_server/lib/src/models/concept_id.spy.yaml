@@ -1,0 +1,9 @@
+### Grade 3-5 concepts the server can build and check questions for.
+enum: ConceptId
+values:
+  - addRegroup
+  - subtractCountUp
+  - multiply2x1
+  - multiply2x2
+  - divideByOneDigit
+  - equivalentFractions

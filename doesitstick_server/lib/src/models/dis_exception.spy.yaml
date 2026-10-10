@@ -1,0 +1,3 @@
+exception: DidItStickException
+fields:
+  message: String

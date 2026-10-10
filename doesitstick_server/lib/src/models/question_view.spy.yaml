@@ -1,0 +1,6 @@
+class: QuestionView
+fields:
+  question: Question
+  marks: List<Mark>
+  ### Latest mark by markedAt across both parents.
+  latest: Mark?

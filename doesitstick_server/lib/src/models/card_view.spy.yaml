@@ -1,0 +1,8 @@
+class: CardView
+fields:
+  card: QuestionCard
+  questions: List<QuestionView>
+  conceptTitle: String
+  methodName: String
+  methodLine: String
+  grade: int

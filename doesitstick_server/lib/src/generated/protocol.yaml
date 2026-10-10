@@ -1,0 +1,32 @@
+anonymousIdp:
+  - login:
+emailIdp:
+  - login:
+  - startRegistration:
+  - verifyRegistrationCode:
+  - finishRegistration:
+  - startPasswordReset:
+  - verifyPasswordResetCode:
+  - finishPasswordReset:
+  - hasAccount:
+jwtRefresh:
+  - refreshAccessToken:
+family:
+  - me:
+  - create:
+  - join:
+  - home:
+  - concepts:
+  - updates:
+worksheet:
+  - startPhoto:
+  - submitPhoto:
+  - chooseTopic:
+card:
+  - card:
+  - syncMarks:
+progress:
+  - digest:
+  - shareDigest:
+  - stopSharing:
+  - jumpAhead:
