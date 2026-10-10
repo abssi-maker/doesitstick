@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../client.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
+import '../widgets/how_it_works.dart';
 import '../widgets/invite.dart';
 import 'home_shell.dart';
 
@@ -125,6 +126,13 @@ class FamilyScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        OutlinedButton.icon(
+          key: const Key('howItWorks'),
+          onPressed: () => showHowItWorks(context),
+          icon: const Icon(Icons.info_outline_rounded),
+          label: const Text('How Did It Stick works'),
+        ),
+        const SizedBox(height: 10),
         OutlinedButton(
           onPressed: () async {
             if (await confirmSignOut(context)) {

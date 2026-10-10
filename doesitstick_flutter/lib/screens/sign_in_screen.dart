@@ -4,6 +4,7 @@ import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import '../client.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
+import '../widgets/how_it_works.dart';
 
 /// Every feature, in the order a parent meets them. Shown on the welcome
 /// screen so the promise is clear before signing in.
@@ -11,8 +12,8 @@ const _features = [
   (
     '📸',
     'Snap the worksheet',
-    'Gemini reads the problems and the topic. The photo stays private to '
-        'your family and is deleted after 7 days.',
+    'Google Gemini reads the problems and the topic. The photo stays '
+        'private to your family and is deleted after 7 days.',
   ),
   (
     '🗣️',
@@ -274,6 +275,23 @@ class _Evidence extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextButton.icon(
+          key: const Key('howItWorks'),
+          onPressed: () => showHowItWorks(context),
+          icon: const Icon(Icons.info_outline_rounded),
+          label: const Text('How it works, under the hood'),
+          style: TextButton.styleFrom(padding: EdgeInsets.zero),
+        ),
+        const SizedBox(height: 8),
+        _evidenceText(context),
+      ],
+    );
+  }
+
+  Widget _evidenceText(BuildContext context) {
     return Text(
       'Why calm matters: parents’ stress while helping, not their math '
       'skills, is what lowers children’s math learning and confidence '

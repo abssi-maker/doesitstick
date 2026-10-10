@@ -177,8 +177,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       ),
       const SizedBox(height: 12),
       Text(
-        'Only first names are stored. Worksheet photos are private to your '
-        'family and deleted after 7 days.',
+        'Only first names are stored. Worksheet photos are read by Google '
+        'Gemini, kept private to your family, and deleted after 7 days.',
         style: t.bodySmall,
         textAlign: TextAlign.center,
       ),

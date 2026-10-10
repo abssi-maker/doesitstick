@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:doesitstick_client/doesitstick_client.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -293,8 +294,22 @@ class FamilyController extends ChangeNotifier {
       imageQuality: 72,
     );
     if (picked == null) return false;
+    await _upload(await picked.readAsBytes());
+    return true;
+  }
+
+  /// A sample grade-4 multiplication worksheet, for parents (and judges) who
+  /// don't have tonight's homework at hand. It goes through the same path as
+  /// a real photo: upload, Gemini, server-built and re-checked questions.
+  Future<void> snapSample() async {
+    final data = await rootBundle.load('assets/sample_worksheet.jpg');
+    await _upload(
+      data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes),
+    );
+  }
+
+  Future<void> _upload(Uint8List bytes) async {
     await _busy(() async {
-      final bytes = await picked.readAsBytes();
       final ticket = await client.worksheet.startPhoto();
       _photos[ticket.worksheetId] = bytes;
       final ok = await FileUploader(
@@ -304,7 +319,6 @@ class FamilyController extends ChangeNotifier {
       await client.worksheet.submitPhoto(ticket.worksheetId);
       await refresh();
     });
-    return true;
   }
 
   Future<void> chooseTopic(ConceptId concept, {int? worksheetId}) =>

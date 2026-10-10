@@ -7,7 +7,11 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Doesitstick Flutter</string>
+	<string>Did It Stick</string>
+	<key>NSCameraUsageDescription</key>
+	<string>To photograph tonight’s math worksheet, so we can tell you what to say.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>To choose a photo of tonight’s math worksheet.</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

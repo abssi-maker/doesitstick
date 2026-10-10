@@ -105,6 +105,20 @@ class TonightScreen extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         TextButton(
+          key: const Key('trySample'),
+          onPressed: c.busy
+              ? null
+              : () async {
+                  try {
+                    await c.snapSample();
+                  } catch (e) {
+                    if (context.mounted) toast(context, errorText(e));
+                  }
+                },
+          style: TextButton.styleFrom(foregroundColor: C.grapeT),
+          child: const Text('No worksheet at hand? Try a sample one'),
+        ),
+        TextButton(
           key: const Key('pickTopic'),
           onPressed: c.busy ? null : () => showTopicSheet(context),
           style: TextButton.styleFrom(foregroundColor: C.ink2),
@@ -113,7 +127,8 @@ class TonightScreen extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           home.aiReaderEnabled
-              ? 'Only your family can see the photo. It’s deleted after 7 days.'
+              ? 'Google Gemini reads the photo. Only your family can see it, '
+                    'and it’s deleted after 7 days.'
               : 'Photo reading is off here, so you’ll pick the topic after '
                     'the photo. It’s deleted after 7 days.',
           style: t.bodySmall,

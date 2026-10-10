@@ -1,12 +1,14 @@
 # Did It Stick
 
-**Calm math homework for parents.** Snap tonight's worksheet and Did It Stick tells you what to
-say, the way the class teaches it, and when to stop. Then it checks, days later, that it stuck.
+**Calm math homework for parents, and proof it stuck.** Snap tonight's worksheet and Did It Stick
+tells you what to say for your child's *actual* problems, the way the class teaches it, and when to
+stop. Then it checks, on day 2 and day 7, that it stuck.
 
 **Try it:** [doesitstick.serverpod.space](https://doesitstick.serverpod.space). Tap *Get started*;
 no account needed.
 
-Built with **Flutter** and **Serverpod** for *Build Something Real: The Serverpod Hackathon*.
+Built with **Flutter** and **Serverpod 4** in **Serverpod App Studio** with an AI coding agent, for
+*Build Something Real: The Serverpod Hackathon*.
 
 ## The problem
 
@@ -26,7 +28,7 @@ math, and the classroom methods (area models, partial quotients, number lines) a
 
 Did It Stick coaches the **parent**, not the child.
 
-1. **Snap the worksheet.** Gemini reads the topic and the problems. Both parents can look at the photo
+1. **Snap the worksheet.** Google Gemini reads the topic and the problems. Both parents can look at the photo
    again; it stays private to the family and is deleted after 7 days.
 2. **Work through it together**, on the child's *own* problems:
    - **How the class does it**: the method in one line.
@@ -63,13 +65,23 @@ Every Serverpod feature answers a parent need.
 
 One Dart codebase: the Flutter app (Android and web) and the server share generated models.
 
-## Try it as a judge
+## Try it as a judge (about a minute)
+
+1. Open [doesitstick.serverpod.space](https://doesitstick.serverpod.space), tap **Get started**, enter a
+   child's name and yours, and skip the invite.
+2. On *Tonight*, tap **No worksheet at hand? Try a sample one**. It goes through the real path:
+   upload → Gemini → server-built, re-checked questions on the sheet's own problems (46 × 7, …).
+3. **Work through it together**: try the hint, then *Still stuck? Kind ending*.
+4. **How it works, under the hood** (welcome page or *Family* tab) maps each step to the Serverpod
+   feature behind it.
+
+More:
 
 - **Two parents:** open the app in two browsers (or a normal and a private window). Start a family in
   one, then join with the code from the *Family* tab in the other. Marks appear live in both.
 - **A worksheet:** sample photos are in
   [`doesitstick_server/test/fixtures/worksheets`](doesitstick_server/test/fixtures/worksheets).
-  Download one and use *Choose a photo*.
+  Download one and use *Choose a photo instead*.
 - **Day 7 without waiting a week:** on *Re-checks*, use **For judges: jump ahead in time**.
 
 ## Run it locally
