@@ -65,6 +65,19 @@ Every Serverpod feature answers a parent need.
 
 One Dart codebase: the Flutter app (Android and web) and the server share generated models.
 
+### Why not Serverpod 4's offline sync (yet)?
+
+We looked hard at `database: sync`; it fits the problem (a family would be a shared *space*). We kept
+a small outbox instead, for now:
+
+- Most judges and many parents use the **web** app, and web support for the client database isn't
+  documented yet.
+- Every mark is **validated on the server** (it must belong to that family's question) and made
+  idempotent by `clientMarkId`; the sync module has no server-side write hook yet.
+- It's experimental (0.0.x) with recent API renames, and this app has to work on demo day.
+
+When offline sync is stable (planned for 4.1), the marks move to a family space.
+
 ## Try it as a judge (about a minute)
 
 1. Open [doesitstick.serverpod.space](https://doesitstick.serverpod.space), tap **Get started**, enter a

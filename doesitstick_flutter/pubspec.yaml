@@ -42,6 +42,7 @@ dev_dependencies:
   # Used for agents to drive the app through the Dart MCP
   flutter_driver:
     sdk: flutter
+  flutter_launcher_icons: ^0.14.4
   flutter_lints: '>=3.0.0 <7.0.0'
   flutter_test:
     sdk: flutter
@@ -73,6 +74,7 @@ flutter:
   assets:
     - assets/config.json
     - assets/sample_worksheet.jpg
+    - assets/icon/favicon.png
 
   # To add custom fonts to your application, add a fonts section here,
   # in this "flutter" section. Each entry in this list should have a
@@ -93,3 +95,21 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+# App icons: drawn by tool/make_icon.py, sized for every platform by
+# `dart run flutter_launcher_icons`.
+flutter_launcher_icons:
+  image_path: assets/icon/icon.png
+  android: true
+  adaptive_icon_background: assets/icon/background.png
+  adaptive_icon_foreground: assets/icon/foreground.png
+  ios: true
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/icon/icon.png
+    background_color: "#FFF8EE"
+    theme_color: "#6C4CF5"
+  macos:
+    generate: true
+    image_path: assets/icon/icon.png

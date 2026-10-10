@@ -196,6 +196,8 @@ class _Pitch extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Image.asset('assets/icon/favicon.png', width: 64, height: 64),
+        const SizedBox(height: 14),
         const Eyebrow('Did It Stick · calm math homework'),
         const SizedBox(height: 8),
         Text('Math homework, without the yelling.', style: t.displaySmall),

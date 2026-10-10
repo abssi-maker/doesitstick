@@ -165,7 +165,7 @@ class _RailBrand extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(8, 16, 8, 24),
       child: Column(
         children: [
-          const Text('🌱', style: TextStyle(fontSize: 30)),
+          Image.asset('assets/icon/favicon.png', width: 44, height: 44),
           if (!compact) ...[
             const SizedBox(height: 4),
             Text('Did It Stick', style: t.titleMedium),
