@@ -83,7 +83,8 @@ class WorksheetService {
       }
     }
 
-    result = await deletePhoto(session, result);
+    // The photo stays (privately, for the family) until the re-check week is
+    // over; the maintenance sweep deletes it after [photoKeepDays].
     await Worksheet.db.updateRow(session, result);
     await FamilyService.postEvent(
       session,
@@ -97,8 +98,12 @@ class WorksheetService {
     );
   }
 
-  /// The photo is only needed for one reading. Deletion happens on success
-  /// and on failure, and photoDeletedAt is only set once storage confirms.
+  /// Photos are kept for the re-check week so both parents can look at the
+  /// worksheet again, then deleted.
+  static const photoKeepDays = 7;
+
+  /// Deletes the photo from storage; photoDeletedAt is only set once storage
+  /// confirms.
   static Future<Worksheet> deletePhoto(Session session, Worksheet ws) async {
     final path = ws.photoPath;
     if (path == null) return ws;
@@ -153,7 +158,7 @@ class WorksheetService {
     );
     final updated = await Worksheet.db.updateRow(
       session,
-      (await deletePhoto(session, ws)).copyWith(
+      ws.copyWith(
         status: WorksheetStatus.ready,
         conceptId: concept,
         cardId: card.id,

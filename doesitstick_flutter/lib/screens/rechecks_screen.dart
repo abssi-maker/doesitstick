@@ -30,11 +30,15 @@ class RechecksScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
       children: [
-        const ScreenHeader(eyebrow: 'Re-checks', title: 'Did it stick?'),
+        const ScreenHeader(
+          eyebrow: 'Did it stick?',
+          title: 'A 1-minute check, days later',
+        ),
         const SizedBox(height: 8),
         Text(
-          'Memory fades fast. A 1-minute check on day 2 and day 7, with new '
-          'numbers, shows what really stuck.',
+          'Memory fades fast. A quick check on day 2 and day 7, with new '
+          'numbers, shows what really stuck. When one is due, it shows up on '
+          'Tonight.',
           style: t.bodyMedium!.copyWith(color: C.ink2),
         ),
         const SizedBox(height: 16),

@@ -259,11 +259,32 @@ class FamilyController extends ChangeNotifier {
 
   /// Photo → private storage → background reader. Returns false if the
   /// parent cancelled the picker.
-  /// Snapped photos, kept in memory on this phone only so the parent can see
-  /// what was read. The server deletes its copy right after reading.
+  /// Worksheet photos, cached in memory. The server keeps them privately for
+  /// the family for 7 days; either parent can load them.
   final _photos = <int, Uint8List>{};
   Uint8List? photoFor(int? worksheetId) =>
       worksheetId == null ? null : _photos[worksheetId];
+
+  Future<Uint8List?> loadPhoto(Worksheet ws) async {
+    final id = ws.id;
+    if (id == null || ws.photoDeletedAt != null) return null;
+    final cached = _photos[id];
+    if (cached != null) return cached;
+    final data = await client.worksheet.photo(id);
+    if (data == null) return null;
+    final bytes = data.buffer.asUint8List(
+      data.offsetInBytes,
+      data.lengthInBytes,
+    );
+    _photos[id] = bytes;
+    return bytes;
+  }
+
+  Future<void> deletePhoto(int worksheetId) => _busy(() async {
+    await client.worksheet.deletePhoto(worksheetId);
+    _photos.remove(worksheetId);
+    await refresh();
+  });
 
   Future<bool> snapWorksheet(ImageSource source) async {
     final picked = await ImagePicker().pickImage(

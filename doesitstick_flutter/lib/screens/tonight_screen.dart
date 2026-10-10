@@ -94,36 +94,28 @@ class TonightScreen extends StatelessWidget {
           onPressed: c.busy ? null : () => _snap(context, ImageSource.camera),
           icon: const Icon(Icons.photo_camera_rounded),
           label: Text(
-            card == null ? 'Photograph worksheet' : 'Snap a new worksheet',
+            card == null ? 'Snap the worksheet' : 'Snap a new worksheet',
           ),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: c.busy
-                    ? null
-                    : () => _snap(context, ImageSource.gallery),
-                child: const Text('Choose a photo'),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: OutlinedButton(
-                key: const Key('pickTopic'),
-                onPressed: c.busy ? null : () => showTopicSheet(context),
-                child: const Text('Pick the topic'),
-              ),
-            ),
-          ],
+        OutlinedButton.icon(
+          onPressed: c.busy ? null : () => _snap(context, ImageSource.gallery),
+          icon: const Icon(Icons.photo_library_rounded),
+          label: const Text('Choose a photo instead'),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 4),
+        TextButton(
+          key: const Key('pickTopic'),
+          onPressed: c.busy ? null : () => showTopicSheet(context),
+          style: TextButton.styleFrom(foregroundColor: C.ink2),
+          child: const Text('No photo? Pick the topic yourself'),
+        ),
+        const SizedBox(height: 4),
         Text(
           home.aiReaderEnabled
-              ? 'The photo is read once, then deleted.'
-              : 'Photo reading is off on this server, so you’ll pick the '
-                    'topic after the photo. The photo is still deleted.',
+              ? 'Only your family can see the photo. It’s deleted after 7 days.'
+              : 'Photo reading is off here, so you’ll pick the topic after '
+                    'the photo. It’s deleted after 7 days.',
           style: t.bodySmall,
           textAlign: TextAlign.center,
         ),
@@ -209,6 +201,145 @@ class _Photo extends StatelessWidget {
         width: double.infinity,
         fit: BoxFit.cover,
         alignment: Alignment.topCenter,
+      ),
+    );
+  }
+}
+
+/// The worksheet photo for either parent: a thumbnail that opens full screen.
+class _WorksheetPhoto extends StatefulWidget {
+  final Worksheet worksheet;
+  final Uint8List? fresh;
+  const _WorksheetPhoto({required this.worksheet, this.fresh});
+
+  @override
+  State<_WorksheetPhoto> createState() => _WorksheetPhotoState();
+}
+
+class _WorksheetPhotoState extends State<_WorksheetPhoto> {
+  late Future<Uint8List?> _photo = _load();
+
+  Future<Uint8List?> _load() async =>
+      widget.fresh ??
+      await FamilyScope.of(context)
+          .loadPhoto(widget.worksheet)
+          .catchError(
+            (_) => null,
+          );
+
+  @override
+  void didUpdateWidget(_WorksheetPhoto old) {
+    super.didUpdateWidget(old);
+    if (old.worksheet.id != widget.worksheet.id) _photo = _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List?>(
+      future: _photo,
+      builder: (context, snap) {
+        final bytes = snap.data;
+        if (bytes == null) return const SizedBox.shrink();
+        return InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => FamilyScope(
+                controller: FamilyScope.of(context),
+                child: _PhotoViewer(worksheet: widget.worksheet, bytes: bytes),
+              ),
+            ),
+          ),
+          child: Stack(
+            children: [
+              _Photo(bytes: bytes, height: 120),
+              const Positioned(
+                left: 8,
+                bottom: 8,
+                child: Pill('🔒 Private · 7 days', bg: C.mintS, fg: C.mintT),
+              ),
+              const Positioned(
+                right: 8,
+                bottom: 8,
+                child: Pill('Tap to see it all', bg: C.paper, fg: C.ink),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _PhotoViewer extends StatelessWidget {
+  final Worksheet worksheet;
+  final Uint8List bytes;
+  const _PhotoViewer({required this.worksheet, required this.bytes});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = FamilyScope.of(context);
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: C.cream,
+        title: const Text('Tonight’s worksheet'),
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: InteractiveViewer(
+              maxScale: 5,
+              child: Center(child: Image.memory(bytes)),
+            ),
+          ),
+          SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Text(
+                    'Pinch to zoom. Only your family can see this photo; it’s '
+                    'deleted automatically after 7 days.',
+                    style: Theme.of(context).textTheme.bodySmall,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    key: const Key('deletePhoto'),
+                    onPressed: () async {
+                      final ok = await showDialog<bool>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Delete this photo now?'),
+                          content: const Text(
+                            'Tonight’s problems and answers stay. Only the '
+                            'picture is deleted, for both of you.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, false),
+                              child: const Text('Keep it'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context, true),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (ok != true) return;
+                      await c.deletePhoto(worksheet.id!);
+                      if (context.mounted) Navigator.of(context).pop();
+                    },
+                    icon: const Icon(Icons.delete_outline_rounded),
+                    label: const Text('Delete photo now'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -313,12 +444,13 @@ class _CardSummary extends StatelessWidget {
         .where((q) => q.question.fromWorksheet)
         .length;
     final photo = this.photo;
+    final sheet = worksheet;
     return Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (photo != null) ...[
-            _Photo(bytes: photo, height: 120),
+          if (sheet != null && sheet.photoDeletedAt == null) ...[
+            _WorksheetPhoto(worksheet: sheet, fresh: photo),
             const SizedBox(height: 12),
           ],
           Row(

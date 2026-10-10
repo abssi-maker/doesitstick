@@ -12,11 +12,13 @@ class SweepResult {
 }
 
 /// Safety net behind the one-off future calls: anything overdue gets done,
-/// and no worksheet photo outlives its reading by more than an hour.
+/// worksheet photos are deleted after the re-check week, and a photo that was
+/// never read is handed back to the parent to pick the topic.
 class MaintenanceService {
   static const sweepId = 'maintenance-sweep';
   static const interval = Duration(minutes: 15);
-  static const photoMaxAge = Duration(hours: 1);
+  static const photoMaxAge = Duration(days: WorksheetService.photoKeepDays);
+  static const unreadAfter = Duration(hours: 1);
   static const recheckGrace = Duration(minutes: 5);
 
   /// Re-registers the recurring sweep at boot, replacing any earlier one.
@@ -45,6 +47,25 @@ class MaintenanceService {
       }
     }
 
+    // A photo that never got read (the reader was down, the app closed
+    // mid-upload): let the parent pick the topic instead of waiting.
+    final unread = await Worksheet.db.find(
+      session,
+      where: (w) =>
+          (w.status.equals(WorksheetStatus.uploaded) |
+              w.status.equals(WorksheetStatus.reading)) &
+          (w.createdAt < t.subtract(unreadAfter)),
+    );
+    for (final ws in unread) {
+      await Worksheet.db.updateRow(
+        session,
+        ws.copyWith(
+          status: WorksheetStatus.needsTopic,
+          note: 'That photo was never read. Pick the topic instead.',
+        ),
+      );
+    }
+
     final stale = await Worksheet.db.find(
       session,
       where: (w) =>
@@ -54,18 +75,7 @@ class MaintenanceService {
     for (final ws in stale) {
       final cleaned = await WorksheetService.deletePhoto(session, ws);
       if (cleaned.photoPath != null) continue;
-      final abandoned =
-          ws.status == WorksheetStatus.uploaded ||
-          ws.status == WorksheetStatus.reading;
-      await Worksheet.db.updateRow(
-        session,
-        abandoned
-            ? cleaned.copyWith(
-                status: WorksheetStatus.needsTopic,
-                note: 'That photo was never read. Pick the topic instead.',
-              )
-            : cleaned,
-      );
+      await Worksheet.db.updateRow(session, cleaned);
       photos++;
     }
     if (rechecks + photos > 0) {

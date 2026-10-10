@@ -37,6 +37,11 @@ class _CardScreenState extends State<CardScreen> {
   final _watch = Stopwatch()..start();
   Timer? _tick;
 
+  /// One problem on screen at a time; [_finished] shows the summary.
+  int _step = 0;
+  bool _finished = false;
+  bool _placed = false;
+
   @override
   void initState() {
     super.initState();
@@ -49,6 +54,37 @@ class _CardScreenState extends State<CardScreen> {
   void dispose() {
     _tick?.cancel();
     super.dispose();
+  }
+
+  Widget _donePanel(
+    BuildContext context,
+    bool isRecheck,
+    List<Recheck> next,
+  ) {
+    final t = Theme.of(context).textTheme;
+    return Panel(
+      color: C.mintS,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            isRecheck ? 'Re-check done 🎉' : 'Done, calmly 🎉',
+            style: t.titleLarge!.copyWith(color: C.mintT),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            next.isEmpty
+                ? (isRecheck
+                      ? 'This counts toward the weekly “what stuck”.'
+                      : 'Setting up the re-checks…')
+                : 'We’ll check it stuck on '
+                      '${next.map((r) => '${shortDate(r.dueAt)} (day ${r.dayOffset})').join(' and ')}, '
+                      'with new numbers. When it’s due, it shows up on Tonight.',
+            style: t.bodyMedium!.copyWith(color: C.mintT),
+          ),
+        ],
+      ),
+    );
   }
 
   String _mmss(Duration d) =>
@@ -75,6 +111,13 @@ class _CardScreenState extends State<CardScreen> {
               r.status == RecheckStatus.scheduled,
         )
         .toList();
+    if (!_placed) {
+      // Open where the parent left off; a finished card opens on its summary.
+      _placed = true;
+      _finished = done;
+      final open = card.questions.indexWhere((q) => c.effectiveMark(q) == null);
+      _step = open < 0 ? 0 : open;
+    }
     final worksheet = c.home!.worksheets
         .where((w) => w.cardId == card.card.id)
         .firstOrNull;
@@ -152,39 +195,66 @@ class _CardScreenState extends State<CardScreen> {
               else
                 const Stick(says: 'Read each line aloud. Go slow.', mood: '🌿'),
               const SizedBox(height: 16),
-              for (var i = 0; i < card.questions.length; i++) ...[
+              if (_finished) ...[
+                if (done) _donePanel(context, isRecheck, next),
+                const SizedBox(height: 14),
+                for (var i = 0; i < card.questions.length; i++)
+                  _SummaryRow(
+                    index: i,
+                    view: card.questions[i],
+                    onTap: () => setState(() {
+                      _step = i;
+                      _finished = false;
+                    }),
+                  ),
+              ] else ...[
+                _Steps(
+                  count: card.questions.length,
+                  current: _step,
+                  marked: [
+                    for (final q in card.questions) c.effectiveMark(q) != null,
+                  ],
+                  onTap: (i) => setState(() => _step = i),
+                ),
+                const SizedBox(height: 12),
                 _QuestionTile(
-                  index: i,
-                  view: card.questions[i],
+                  key: ValueKey(card.questions[_step].question.id),
+                  index: _step,
+                  view: card.questions[_step],
                   methodName: card.methodName,
                   isRecheck: isRecheck,
                 ),
                 const SizedBox(height: 14),
-              ],
-              if (done)
-                Panel(
-                  color: C.mintS,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        isRecheck ? 'Re-check done 🎉' : 'Done, calmly 🎉',
-                        style: t.titleLarge!.copyWith(color: C.mintT),
+                Row(
+                  children: [
+                    if (_step > 0)
+                      TextButton.icon(
+                        onPressed: () => setState(() => _step--),
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        label: const Text('Back'),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        next.isEmpty
-                            ? (isRecheck
-                                  ? 'This counts toward the weekly “what stuck”.'
-                                  : 'Setting up the re-checks…')
-                            : 'We’ll check it stuck on '
-                                  '${next.map((r) => '${shortDate(r.dueAt)} (day ${r.dayOffset})').join(' and ')}, '
-                                  'with new numbers. About a minute each.',
-                        style: t.bodyMedium!.copyWith(color: C.mintT),
+                    const Spacer(),
+                    FilledButton(
+                      key: const Key('nextProblem'),
+                      onPressed: () => setState(() {
+                        if (_step < card.questions.length - 1) {
+                          _step++;
+                        } else {
+                          _finished = true;
+                        }
+                      }),
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size(160, 52),
                       ),
-                    ],
-                  ),
+                      child: Text(
+                        _step < card.questions.length - 1
+                            ? 'Next problem'
+                            : 'Finish',
+                      ),
+                    ),
+                  ],
                 ),
+              ],
               if (canChangeTopic) ...[
                 const SizedBox(height: 6),
                 TextButton(
@@ -209,6 +279,7 @@ class _QuestionTile extends StatefulWidget {
   final String methodName;
   final bool isRecheck;
   const _QuestionTile({
+    super.key,
     required this.index,
     required this.view,
     required this.methodName,
@@ -370,6 +441,83 @@ class _QuestionTileState extends State<_QuestionTile> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// "Problem 2 of 3" with one dot per problem; marked ones fill in green.
+class _Steps extends StatelessWidget {
+  final int count;
+  final int current;
+  final List<bool> marked;
+  final ValueChanged<int> onTap;
+  const _Steps({
+    required this.count,
+    required this.current,
+    required this.marked,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Row(
+      children: [
+        Text('Problem ${current + 1} of $count', style: t.titleMedium),
+        const Spacer(),
+        for (var i = 0; i < count; i++)
+          GestureDetector(
+            onTap: () => onTap(i),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(left: 6),
+              width: i == current ? 28 : 12,
+              height: 12,
+              decoration: BoxDecoration(
+                color: marked[i] ? C.mint : (i == current ? C.grape : C.line),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// One line per problem on the finished card; tap to look again.
+class _SummaryRow extends StatelessWidget {
+  final int index;
+  final QuestionView view;
+  final VoidCallback onTap;
+  const _SummaryRow({
+    required this.index,
+    required this.view,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final c = FamilyScope.of(context);
+    final t = Theme.of(context).textTheme;
+    final mark = c.effectiveMark(view);
+    final label = mark == null
+        ? 'Not marked'
+        : _outcomes.firstWhere((o) => o.$1 == mark.outcome).$3;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: C.paper,
+        borderRadius: BorderRadius.circular(20),
+        child: ListTile(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          onTap: onTap,
+          title: Text(view.question.prompt, style: t.bodyMedium),
+          subtitle: Text('${index + 1} · ${_styleLabel[view.question.style]}'),
+          trailing: Pill(label),
+        ),
       ),
     );
   }

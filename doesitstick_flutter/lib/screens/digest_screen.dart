@@ -145,7 +145,7 @@ class _DigestScreenState extends State<DigestScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Share as a web page',
+                  'Share with a teacher or grandparent',
                   style: t.titleMedium!.copyWith(color: C.grapeT),
                 ),
                 const SizedBox(height: 4),

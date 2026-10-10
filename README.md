@@ -26,7 +26,8 @@ math, and the classroom methods (area models, partial quotients, number lines) a
 
 Did It Stick coaches the **parent**, not the child.
 
-1. **Snap the worksheet.** Gemini reads the topic and the problems. The photo is deleted right after.
+1. **Snap the worksheet.** Gemini reads the topic and the problems. Both parents can look at the photo
+   again; it stays private to the family and is deleted after 7 days.
 2. **Work through it together**, on the child's *own* problems:
    - **How the class does it**: the method in one line.
    - **Say:** the exact words to use.
@@ -35,7 +36,8 @@ Did It Stick coaches the **parent**, not the child.
    - **Listen for:** what a good "why" sounds like.
 3. **Mark how it went**: Not yet / With a hint / Got the answer / Explained why. No red, anywhere.
    A praise line tells you what to say next.
-4. **Your partner sees it live** on their phone.
+4. **Your partner sees it live** on their phone. Invite them with a link; it opens the app with the
+   code filled in.
 5. **Did it stick?** A 1-minute re-check on day 2 and day 7, with new numbers, and a weekly
    "what stuck" summary.
 
@@ -52,7 +54,7 @@ Every Serverpod feature answers a parent need.
 | Never give my child a wrong answer | **Server-side checking.** Gemini only names the topic and copies the problems. Dart code on the server builds every question and recomputes every answer with an independent checker (`math/concepts.dart`). A misread problem is dropped, not trusted. |
 | My partner should see tonight live | **Streaming endpoints** + `session.messages` on a per-family channel. |
 | Check it stuck without me remembering | **Scheduled future calls** on day 2 and day 7. `Recheck` rows are the source of truth, and a recurring 15-minute sweep catches anything missed, so restarts and deploys lose nothing. |
-| My child's homework photo is private | **Private file storage** with upload descriptions; deleted right after reading, and the sweep removes anything older than an hour. |
+| My child's homework photo is private | **Private file storage** with upload descriptions; only family members can fetch it through an endpoint, a parent can delete it, and the sweep removes it after 7 days. |
 | No sign-up at the kitchen table | **Serverpod auth** with a one-tap anonymous identity provider; email sign-in is optional. |
 | Wi-Fi drops at home | An offline outbox on the phone and **idempotent** marks (`clientMarkId`); the latest mark wins. |
 | Setup must never get stuck | Idempotent `family.create` and `join`: retrying after a lost reply is safe. |

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
 
@@ -204,6 +205,41 @@ class WorksheetEndpoint extends Endpoint {
       actorName: member.displayName,
     );
     return reading;
+  }
+
+  /// The worksheet photo, for either parent, while it's still kept.
+  Future<ByteData?> photo(Session session, int worksheetId) async {
+    final member = await FamilyService.requireMember(session);
+    final ws = await Worksheet.db.findById(session, worksheetId);
+    final path = ws?.photoPath;
+    if (ws == null || ws.familyId != member.familyId || path == null) {
+      return null;
+    }
+    return session.storage.retrieveFile(
+      storageId: WorksheetService.storageId,
+      path: path,
+    );
+  }
+
+  /// Deletes the worksheet photo now instead of after the re-check week.
+  Future<Worksheet> deletePhoto(Session session, int worksheetId) async {
+    final member = await FamilyService.requireMember(session);
+    final ws = await Worksheet.db.findById(session, worksheetId);
+    if (ws == null || ws.familyId != member.familyId) {
+      throw DidItStickException(message: 'Worksheet not found.');
+    }
+    final cleaned = await Worksheet.db.updateRow(
+      session,
+      await WorksheetService.deletePhoto(session, ws),
+    );
+    await FamilyService.postEvent(
+      session,
+      member.familyId,
+      kind: 'worksheet',
+      message: '${member.displayName} deleted the worksheet photo',
+      actorName: member.displayName,
+    );
+    return cleaned;
   }
 
   /// Pick the topic directly (no photo), or correct the reader's guess.

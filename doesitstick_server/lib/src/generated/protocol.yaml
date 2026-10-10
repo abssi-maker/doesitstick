@@ -21,6 +21,8 @@ family:
 worksheet:
   - startPhoto:
   - submitPhoto:
+  - photo:
+  - deletePhoto:
   - chooseTopic:
 card:
   - card:

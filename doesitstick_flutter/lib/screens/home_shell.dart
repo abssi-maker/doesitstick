@@ -82,7 +82,7 @@ class _HomeShellState extends State<HomeShell> {
           );
           const tabs = [
             (Icons.wb_twilight_rounded, 'Tonight'),
-            (Icons.replay_rounded, 'Re-checks'),
+            (Icons.replay_rounded, 'Did it stick?'),
             (Icons.local_florist_rounded, 'What stuck'),
             (Icons.people_alt_rounded, 'Family'),
           ];

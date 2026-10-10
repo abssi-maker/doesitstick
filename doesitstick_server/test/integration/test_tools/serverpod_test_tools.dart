@@ -13,6 +13,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
 import 'dart:io' as _idi;
+import 'dart:typed_data' as _idt;
 import 'package:doesitstick_server/src/generated/card_view.dart' as _i8jepc88;
 import 'package:doesitstick_server/src/generated/concept_id.dart' as _iqejb9wz;
 import 'package:doesitstick_server/src/generated/concept_option.dart'
@@ -847,6 +848,68 @@ class _WorksheetEndpoint {
           createSessionCallback: (_) => _localUniqueSession,
           endpointPath: 'worksheet',
           methodName: 'submitPhoto',
+          parameters: _ist.testObjectToJson({'worksheetId': worksheetId}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_idm9nequ.Worksheet>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_idt.ByteData?> photo(
+    _ist.TestSessionBuilder sessionBuilder,
+    int worksheetId,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'worksheet',
+            method: 'photo',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'worksheet',
+          methodName: 'photo',
+          parameters: _ist.testObjectToJson({'worksheetId': worksheetId}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<_idt.ByteData?>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<_idm9nequ.Worksheet> deletePhoto(
+    _ist.TestSessionBuilder sessionBuilder,
+    int worksheetId,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'worksheet',
+            method: 'deletePhoto',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'worksheet',
+          methodName: 'deletePhoto',
           parameters: _ist.testObjectToJson({'worksheetId': worksheetId}),
           serializationManager: _serializationManager,
         );

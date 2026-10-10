@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../client.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
+import '../widgets/invite.dart';
 import 'home_shell.dart';
 
 class FamilyScreen extends StatelessWidget {
@@ -48,28 +49,45 @@ class FamilyScreen extends StatelessWidget {
                 Text('Invite your partner', style: t.titleMedium),
                 const SizedBox(height: 4),
                 Text(
-                  'They sign in on their phone, tap “Join with code” and enter:',
+                  'Send them a link by WhatsApp, text or email. They’ll see '
+                  'every problem and answer live, on their phone or computer.',
                   style: t.bodySmall,
+                ),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  key: const Key('sendInvite'),
+                  onPressed: () => sendInvite(
+                    context,
+                    childName: f.childName,
+                    code: f.inviteCode,
+                  ),
+                  icon: const Icon(Icons.send_rounded),
+                  label: const Text('Send an invite'),
                 ),
                 const SizedBox(height: 10),
                 Row(
                   children: [
+                    Expanded(
+                      child: Text(
+                        'Or they choose “I was invited” and type this code:',
+                        style: t.bodySmall,
+                      ),
+                    ),
                     SelectableText(
                       f.inviteCode,
                       key: const Key('inviteCodeText'),
-                      style: t.displaySmall!.copyWith(
-                        letterSpacing: 4,
+                      style: t.titleLarge!.copyWith(
+                        letterSpacing: 3,
                         color: C.grapeT,
                       ),
                     ),
-                    const Spacer(),
                     IconButton(
                       tooltip: 'Copy code',
                       onPressed: () {
                         Clipboard.setData(ClipboardData(text: f.inviteCode));
                         toast(context, 'Code copied');
                       },
-                      icon: const Icon(Icons.copy_rounded),
+                      icon: const Icon(Icons.copy_rounded, size: 20),
                     ),
                   ],
                 ),
@@ -87,7 +105,7 @@ class FamilyScreen extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      'Demo: go offline',
+                      'For judges: try offline mode',
                       style: t.titleMedium!.copyWith(color: C.sunT),
                     ),
                   ),
@@ -99,8 +117,8 @@ class FamilyScreen extends StatelessWidget {
                 ],
               ),
               Text(
-                'Marks are saved on this phone and sent when you come back '
-                'online. Real network drops work the same way.',
+                'Pretend the Wi-Fi dropped: marks are saved on this phone and '
+                'sent when you switch back. Real network drops work the same.',
                 style: t.bodySmall!.copyWith(color: C.sunT),
               ),
             ],

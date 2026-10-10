@@ -10,9 +10,9 @@ Server map (`doesitstick_server/lib/src/`):
 - `endpoints.dart`: `family` (create/join/home/updates stream), `worksheet` (photo upload, topic), `card` (card, `syncMarks`), `progress` (digest, share link, demo `jumpAhead`). All require login and are scoped through `FamilyService.requireMember`.
 - `cards/card_service.dart`: cards and idempotent marks (`clientMarkId`); latest mark by `markedAt` wins.
 - `rechecks/`: `Recheck` rows are the source of truth; `RecheckFutureCall` only triggers `RecheckService.materialize`, which is idempotent.
-- `worksheets/`: `ReadWorksheetFutureCall` runs the reader, then deletes the photo from private storage. The Gemini key is `geminiApiKey` in `config/passwords.yaml` (or `GEMINI_API_KEY`), server-side only; without it parents pick the topic.
+- `worksheets/`: `ReadWorksheetFutureCall` runs the reader; the photo stays in private storage for the family (`worksheet.photo`, `worksheet.deletePhoto`) for 7 days. The Gemini key is `geminiApiKey` in `config/passwords.yaml` (or `GEMINI_API_KEY`), server-side only; without it parents pick the topic.
 - Sign-in: one-tap anonymous (`auth/anonymous_idp_endpoint.dart`, `AnonymousIdpConfig` in `server.dart`); email is optional behind "Sign in with email".
-- `maintenance/`: recurring 15-min sweep (registered after `pod.start()`) that materializes overdue re-checks and deletes photos older than an hour.
+- `maintenance/`: recurring 15-min sweep (registered after `pod.start()`) that materializes overdue re-checks, hands never-read photos back after an hour, and deletes photos after 7 days.
 - `digest/`: "stuck" only after a delayed re-check went well; `ShareDigestRoute` serves the public page.
 
 Flutter (`doesitstick_flutter/lib/`): `state/family_controller.dart` holds the live stream (reconnect + refetch), and the offline outbox in shared_preferences. Screens live in `screens/`; design tokens (Pixel's palette, no red) are in `theme/tokens.dart`.

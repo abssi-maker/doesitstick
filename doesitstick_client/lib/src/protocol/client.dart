@@ -11,6 +11,7 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _ida;
+import 'dart:typed_data' as _idt;
 import 'package:doesitstick_client/src/protocol/card_view.dart' as _idhtdmyd;
 import 'package:doesitstick_client/src/protocol/concept_id.dart' as _iab13f5m;
 import 'package:doesitstick_client/src/protocol/concept_option.dart'
@@ -367,6 +368,22 @@ class EndpointWorksheet extends _isc.EndpointRef {
       caller.callServerEndpoint<_i7ms0xun.Worksheet>(
         'worksheet',
         'submitPhoto',
+        {'worksheetId': worksheetId},
+      );
+
+  /// The worksheet photo, for either parent, while it's still kept.
+  _ida.Future<_idt.ByteData?> photo(int worksheetId) =>
+      caller.callServerEndpoint<_idt.ByteData?>(
+        'worksheet',
+        'photo',
+        {'worksheetId': worksheetId},
+      );
+
+  /// Deletes the worksheet photo now instead of after the re-check week.
+  _ida.Future<_i7ms0xun.Worksheet> deletePhoto(int worksheetId) =>
+      caller.callServerEndpoint<_i7ms0xun.Worksheet>(
+        'worksheet',
+        'deletePhoto',
         {'worksheetId': worksheetId},
       );
 

@@ -11,8 +11,8 @@ const _features = [
   (
     '📸',
     'Snap the worksheet',
-    'Gemini reads the problems and the topic. The photo is deleted right '
-        'after.',
+    'Gemini reads the problems and the topic. The photo stays private to '
+        'your family and is deleted after 7 days.',
   ),
   (
     '🗣️',
@@ -168,7 +168,11 @@ class _SignInScreenState extends State<SignInScreen> {
     TextButton(
       onPressed: () => setState(() => _showEmail = !_showEmail),
       style: TextButton.styleFrom(foregroundColor: C.ink2),
-      child: Text(_showEmail ? 'Hide email sign-in' : 'Sign in with email'),
+      child: Text(
+        _showEmail
+            ? 'Hide email sign-in'
+            : 'Using another phone? Sign in with email',
+      ),
     ),
     if (_showEmail)
       Panel(

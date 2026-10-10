@@ -312,7 +312,7 @@ void main() {
     }
 
     test('when the reader recognises the topic then a card is made and the '
-        'photo is deleted', () async {
+        'photo is kept for the family', () async {
       WorksheetService.readOverride = (_) async => WorksheetReading(
         concept: ConceptId.multiply2x1,
         confidence: 'high',
@@ -326,7 +326,7 @@ void main() {
       expect(after.status, WorksheetStatus.ready);
       expect(after.cardId, isNotNull);
       expect(after.detectedProblems, ['46 × 7', '38 × 5']);
-      expect(after.photoDeletedAt, isNotNull);
+      expect(after.photoDeletedAt, isNull);
       // Tonight's questions coach the worksheet's own problems first.
       final card = await endpoints.card.card(alex, after.cardId!);
       final qs = card.questions.map((q) => q.question).toList();
@@ -334,24 +334,50 @@ void main() {
       expect(qs[1].operands, [38, 5]);
       expect([for (final q in qs) q.fromWorksheet], [true, true, false]);
       expect(qs.every((q) => q.checkedByCode), isTrue);
-      expect(
-        await session.storage.fileExists(
-          storageId: WorksheetService.storageId,
-          path: ws.photoPath!,
-        ),
-        isFalse,
-      );
+      expect(await endpoints.worksheet.photo(alex, ws.id!), isNotNull);
     });
 
+    test(
+      'when another family asks for the photo then they get nothing',
+      () async {
+        final ws = await uploaded();
+        final other = sessionBuilder.copyWith(
+          authentication: AuthenticationOverride.authenticationInfo(
+            _otherId,
+            {},
+          ),
+        );
+        await endpoints.family.create(other, 'Leo', 'Pat');
+        expect(await endpoints.worksheet.photo(other, ws.id!), isNull);
+      },
+    );
+
+    test(
+      'when a parent deletes the photo then it is gone right away',
+      () async {
+        final ws = await uploaded();
+        final after = await endpoints.worksheet.deletePhoto(alex, ws.id!);
+        expect(after.photoDeletedAt, isNotNull);
+        expect(await endpoints.worksheet.photo(alex, ws.id!), isNull);
+        expect(
+          await sessionBuilder.build().storage.fileExists(
+            storageId: WorksheetService.storageId,
+            path: ws.photoPath!,
+          ),
+          isFalse,
+        );
+      },
+    );
+
     test('when the reader fails then the parent is asked for the topic and '
-        'the photo is still deleted', () async {
+        'can still see the photo', () async {
       WorksheetService.readOverride = (_) async => throw Exception('boom');
       final ws = await uploaded();
       final session = sessionBuilder.build();
       await WorksheetService.process(session, ws.id!);
       final after = (await Worksheet.db.findById(session, ws.id!))!;
       expect(after.status, WorksheetStatus.needsTopic);
-      expect(after.photoDeletedAt, isNotNull);
+      expect(after.photoDeletedAt, isNull);
 
       final fixed = await endpoints.worksheet.chooseTopic(
         alex,
@@ -388,8 +414,8 @@ void main() {
       expect(again.rechecks, 0);
     });
 
-    test('when a photo was uploaded but never read then it is deleted and '
-        'the parent is asked for the topic', () async {
+    test('when a photo was never read then the parent is asked for the topic, '
+        'and the photo is deleted after the re-check week', () async {
       await endpoints.family.create(alex, 'Maya', 'Alex');
       final ticket = await endpoints.worksheet.startPhoto(alex);
       final session = sessionBuilder.build();
@@ -399,15 +425,23 @@ void main() {
         path: ws.photoPath!,
         byteData: ByteData.sublistView(Uint8List.fromList([0xFF, 0xD8, 1])),
       );
-      final result = await MaintenanceService.sweep(
+      final soon = await MaintenanceService.sweep(
         session,
         now: DateTime.now().toUtc().add(const Duration(hours: 2)),
       );
-      expect(result.photos, 1);
+      expect(soon.photos, 0);
+      final unread = (await Worksheet.db.findById(session, ws.id!))!;
+      expect(unread.status, WorksheetStatus.needsTopic);
+      expect(unread.photoPath, isNotNull);
+
+      final weekLater = await MaintenanceService.sweep(
+        session,
+        now: DateTime.now().toUtc().add(const Duration(days: 8)),
+      );
+      expect(weekLater.photos, 1);
       final after = (await Worksheet.db.findById(session, ws.id!))!;
       expect(after.photoPath, isNull);
       expect(after.photoDeletedAt, isNotNull);
-      expect(after.status, WorksheetStatus.needsTopic);
       expect(
         await session.storage.fileExists(
           storageId: WorksheetService.storageId,

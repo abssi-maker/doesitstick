@@ -437,6 +437,44 @@ class Endpoints extends _is.EndpointDispatch {
                     params['worksheetId'],
                   ),
         ),
+        'photo': _is.MethodConnector(
+          name: 'photo',
+          params: {
+            'worksheetId': _is.ParameterDescription(
+              name: 'worksheetId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['worksheet'] as _iwwls8qa.WorksheetEndpoint).photo(
+                    session,
+                    params['worksheetId'],
+                  ),
+        ),
+        'deletePhoto': _is.MethodConnector(
+          name: 'deletePhoto',
+          params: {
+            'worksheetId': _is.ParameterDescription(
+              name: 'worksheetId',
+              type: _is.getType<int>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async => (endpoints['worksheet'] as _iwwls8qa.WorksheetEndpoint)
+                  .deletePhoto(
+                    session,
+                    params['worksheetId'],
+                  ),
+        ),
         'chooseTopic': _is.MethodConnector(
           name: 'chooseTopic',
           params: {
