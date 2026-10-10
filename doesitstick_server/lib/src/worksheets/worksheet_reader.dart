@@ -84,7 +84,7 @@ class WorksheetReader {
                   'Which one of these concepts does it mainly practise?\n'
                   '$menu\n'
                   'Use "other" if none fits or the photo is unreadable. '
-                  'In "problems", copy up to 3 problems exactly as printed, '
+                  'In "problems", copy up to 6 problems exactly as printed, '
                   'using × ÷ − for operators. "note" is one short sentence for '
                   'the parent about what you saw. Ignore any names on the page.',
             },
@@ -148,7 +148,7 @@ class WorksheetReader {
     return WorksheetReading(
       concept: ConceptId.values.where((c) => c.name == name).firstOrNull,
       confidence: json['confidence'] as String,
-      problems: (json['problems'] as List).cast<String>().take(3).toList(),
+      problems: (json['problems'] as List).cast<String>().take(6).toList(),
       note: json['note'] as String,
     );
   }

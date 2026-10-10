@@ -327,6 +327,13 @@ void main() {
       expect(after.cardId, isNotNull);
       expect(after.detectedProblems, ['46 × 7', '38 × 5']);
       expect(after.photoDeletedAt, isNotNull);
+      // Tonight's questions coach the worksheet's own problems first.
+      final card = await endpoints.card.card(alex, after.cardId!);
+      final qs = card.questions.map((q) => q.question).toList();
+      expect(qs[0].operands, [46, 7]);
+      expect(qs[1].operands, [38, 5]);
+      expect([for (final q in qs) q.fromWorksheet], [true, true, false]);
+      expect(qs.every((q) => q.checkedByCode), isTrue);
       expect(
         await session.storage.fileExists(
           storageId: WorksheetService.storageId,

@@ -39,7 +39,7 @@ class TonightScreen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
       children: [
-        ScreenHeader(eyebrow: 'Tonight', title: 'How did $child’s math go?'),
+        ScreenHeader(eyebrow: 'Tonight', title: '$child’s homework, calmly'),
         const SizedBox(height: 16),
         if (rechecks.isNotEmpty) ...[
           Panel(
@@ -67,15 +67,24 @@ class TonightScreen extends StatelessWidget {
         if (ws != null &&
             (ws.status == WorksheetStatus.reading ||
                 ws.status == WorksheetStatus.uploaded))
-          _Reading(child: child)
+          _Reading(child: child, photo: c.photoFor(ws.id))
         else if (ws != null && ws.status == WorksheetStatus.needsTopic)
           _NeedsTopic(worksheet: ws),
         if (card != null) ...[
           const SizedBox(height: 4),
-          _CardSummary(card: card, worksheet: cardWorksheet),
+          _CardSummary(
+            card: card,
+            worksheet: cardWorksheet,
+            photo: c.photoFor(cardWorksheet?.id),
+          ),
           const SizedBox(height: 18),
         ] else if (ws == null) ...[
-          const Stick(says: 'Snap tonight’s worksheet to begin.', mood: '📸'),
+          const Stick(
+            says: 'Snap the worksheet. I’ll tell you what to say.',
+            mood: '📸',
+          ),
+          const SizedBox(height: 14),
+          const _HowItWorks(),
           const SizedBox(height: 18),
         ],
         if (c.busy) const LinearProgressIndicator(),
@@ -123,12 +132,96 @@ class TonightScreen extends StatelessWidget {
   }
 }
 
-class _Reading extends StatelessWidget {
-  final String child;
-  const _Reading({required this.child});
+/// Three steps, shown before the first worksheet so the promise is clear.
+class _HowItWorks extends StatelessWidget {
+  const _HowItWorks();
 
   @override
   Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    Widget step(String icon, String title, String body) => Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 32,
+            child: Center(
+              child: Text(icon, style: const TextStyle(fontSize: 24)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: t.titleMedium),
+                Text(body, style: t.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    return Panel(
+      child: Column(
+        children: [
+          step(
+            '📸',
+            'Snap tonight’s worksheet',
+            'We read the problems and the topic.',
+          ),
+          step(
+            '🗣️',
+            'Get the words',
+            'What to say, the way the class teaches it, and hints that never '
+                'give the answer away.',
+          ),
+          step(
+            '♡',
+            'Know when to stop',
+            'A kind way to end when it isn’t clicking tonight.',
+          ),
+          step(
+            '🔁',
+            'See if it stuck',
+            'A 1-minute check on day 2 and day 7, with new numbers.',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The photo the parent just took, from this phone's memory only.
+class _Photo extends StatelessWidget {
+  final Uint8List bytes;
+  final double height;
+  const _Photo({required this.bytes, this.height = 160});
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(18),
+      child: Image.memory(
+        bytes,
+        height: height,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        alignment: Alignment.topCenter,
+      ),
+    );
+  }
+}
+
+class _Reading extends StatelessWidget {
+  final String child;
+  final Uint8List? photo;
+  const _Reading({required this.child, this.photo});
+
+  @override
+  Widget build(BuildContext context) {
+    final photo = this.photo;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Panel(
@@ -136,6 +229,10 @@ class _Reading extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (photo != null) ...[
+              _Photo(bytes: photo),
+              const SizedBox(height: 14),
+            ],
             Stick(says: 'Reading $child’s worksheet…', mood: '✦'),
             const SizedBox(height: 14),
             const LinearProgressIndicator(
@@ -144,7 +241,7 @@ class _Reading extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Both phones get the questions when it’s ready.',
+              'Both phones get the coaching when it’s ready.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
           ],
@@ -200,7 +297,8 @@ class _NeedsTopic extends StatelessWidget {
 class _CardSummary extends StatelessWidget {
   final CardView card;
   final Worksheet? worksheet;
-  const _CardSummary({required this.card, this.worksheet});
+  final Uint8List? photo;
+  const _CardSummary({required this.card, this.worksheet, this.photo});
 
   @override
   Widget build(BuildContext context) {
@@ -211,10 +309,18 @@ class _CardSummary extends StatelessWidget {
         .length;
     final done = marked == card.questions.length;
     final problems = worksheet?.detectedProblems ?? const [];
+    final fromSheet = card.questions
+        .where((q) => q.question.fromWorksheet)
+        .length;
+    final photo = this.photo;
     return Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (photo != null) ...[
+            _Photo(bytes: photo, height: 120),
+            const SizedBox(height: 12),
+          ],
           Row(
             children: [
               Pill('Grade ${card.grade} · ${card.methodName}'),
@@ -226,11 +332,29 @@ class _CardSummary extends StatelessWidget {
           const SizedBox(height: 12),
           Text(card.conceptTitle, style: t.titleLarge),
           if (problems.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              'Seen on the worksheet: ${problems.join(' · ')}',
-              style: t.bodySmall,
+            const SizedBox(height: 8),
+            Text('Found on the worksheet', style: t.bodySmall),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final p in problems)
+                  Pill(
+                    p.replaceAll(RegExp(r'\s*=\s*_*$'), ''),
+                    bg: C.skyS,
+                    fg: C.skyT,
+                  ),
+              ],
             ),
+            if (fromSheet > 0) ...[
+              const SizedBox(height: 6),
+              Text(
+                '$fromSheet of tonight’s ${card.questions.length} problems '
+                'come straight from it.',
+                style: t.bodySmall,
+              ),
+            ],
           ],
           const SizedBox(height: 14),
           Row(
@@ -255,8 +379,8 @@ class _CardSummary extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             done
-                ? 'All 3 asked. Re-checks are scheduled.'
-                : '$marked of ${card.questions.length} asked · about 2 minutes',
+                ? 'All done. We’ll check it stuck on day 2 and day 7.'
+                : '$marked of ${card.questions.length} done · a few calm minutes',
             style: t.bodySmall,
           ),
           const SizedBox(height: 14),
@@ -273,7 +397,9 @@ class _CardSummary extends StatelessWidget {
             style: done
                 ? FilledButton.styleFrom(backgroundColor: C.mintD)
                 : null,
-            child: Text(done ? 'See tonight’s card' : 'Ask the 3 questions'),
+            child: Text(
+              done ? 'See tonight’s card' : 'Work through it together',
+            ),
           ),
         ],
       ),

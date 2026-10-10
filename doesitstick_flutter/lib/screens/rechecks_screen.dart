@@ -33,8 +33,8 @@ class RechecksScreen extends StatelessWidget {
         const ScreenHeader(eyebrow: 'Re-checks', title: 'Did it stick?'),
         const SizedBox(height: 8),
         Text(
-          '2 and 7 days later, a new-number version of the shaky questions. '
-          'It catches forgetting, and copied homework.',
+          'Memory fades fast. A 1-minute check on day 2 and day 7, with new '
+          'numbers, shows what really stuck.',
           style: t.bodyMedium!.copyWith(color: C.ink2),
         ),
         const SizedBox(height: 16),
@@ -107,13 +107,13 @@ class RechecksScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Demo time controls',
+                'For judges: jump ahead in time',
                 style: t.titleMedium!.copyWith(color: C.grapeT),
               ),
               const SizedBox(height: 4),
               Text(
-                'Runs the re-checks due within the next days right now, '
-                'instead of waiting. Marked as fast-forwarded on the server.',
+                'No need to wait a week. Runs the re-checks due in the next '
+                'days right now (marked as fast-forwarded on the server).',
                 style: t.bodySmall!.copyWith(color: C.grapeT),
               ),
               const SizedBox(height: 12),

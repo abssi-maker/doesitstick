@@ -22,8 +22,9 @@ const _outcomes = [
   (Outcome.explainedWhy, '★', 'Explained why'),
 ];
 
-/// The question card: three questions, answers and the method note in view,
-/// one tap per question. Built to finish in about two minutes.
+/// Coaching for the parent: three problems (from the worksheet when it was
+/// read), what to say, the class method, hints and a kind ending, then one
+/// tap to note how it went.
 class CardScreen extends StatefulWidget {
   final int cardId;
   const CardScreen({super.key, required this.cardId});
@@ -91,8 +92,8 @@ class _CardScreenState extends State<CardScreen> {
         surfaceTintColor: C.cream,
         title: Text(
           isRecheck
-              ? 'Day ${card.card.recheckDay} re-check'
-              : 'Tonight’s 3 questions',
+              ? 'Day ${card.card.recheckDay} · did it stick?'
+              : 'Work through it together',
           style: t.titleMedium,
         ),
         actions: [
@@ -139,13 +140,25 @@ class _CardScreenState extends State<CardScreen> {
                   ],
                 ),
               ),
-              if (isRecheck) ...[
-                const SizedBox(height: 10),
-                const Stick(says: 'Same idea, brand-new numbers.', mood: '🔁'),
-              ],
+              const SizedBox(height: 10),
+              if (isRecheck)
+                const Stick(says: 'Same idea, brand-new numbers.', mood: '🔁')
+              else if (card.questions.any((q) => q.question.fromWorksheet))
+                Stick(
+                  says:
+                      'Straight from ${c.home!.family.childName}’s worksheet.',
+                  mood: '📄',
+                )
+              else
+                const Stick(says: 'Read each line aloud. Go slow.', mood: '🌿'),
               const SizedBox(height: 16),
               for (var i = 0; i < card.questions.length; i++) ...[
-                _QuestionTile(index: i, view: card.questions[i]),
+                _QuestionTile(
+                  index: i,
+                  view: card.questions[i],
+                  methodName: card.methodName,
+                  isRecheck: isRecheck,
+                ),
                 const SizedBox(height: 14),
               ],
               if (done)
@@ -155,7 +168,7 @@ class _CardScreenState extends State<CardScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        isRecheck ? 'Re-check done 🎉' : 'Done, together 🎉',
+                        isRecheck ? 'Re-check done 🎉' : 'Done, calmly 🎉',
                         style: t.titleLarge!.copyWith(color: C.mintT),
                       ),
                       const SizedBox(height: 6),
@@ -163,8 +176,10 @@ class _CardScreenState extends State<CardScreen> {
                         next.isEmpty
                             ? (isRecheck
                                   ? 'This counts toward the weekly “what stuck”.'
-                                  : 'Scheduling the re-checks…')
-                            : 'Next check: ${next.map((r) => '${shortDate(r.dueAt)} (day ${r.dayOffset})').join(' and ')} · new numbers',
+                                  : 'Setting up the re-checks…')
+                            : 'We’ll check it stuck on '
+                                  '${next.map((r) => '${shortDate(r.dueAt)} (day ${r.dayOffset})').join(' and ')}, '
+                                  'with new numbers. About a minute each.',
                         style: t.bodyMedium!.copyWith(color: C.mintT),
                       ),
                     ],
@@ -191,7 +206,14 @@ class _CardScreenState extends State<CardScreen> {
 class _QuestionTile extends StatefulWidget {
   final int index;
   final QuestionView view;
-  const _QuestionTile({required this.index, required this.view});
+  final String methodName;
+  final bool isRecheck;
+  const _QuestionTile({
+    required this.index,
+    required this.view,
+    required this.methodName,
+    required this.isRecheck,
+  });
 
   @override
   State<_QuestionTile> createState() => _QuestionTileState();
@@ -240,6 +262,11 @@ class _QuestionTileState extends State<_QuestionTile> {
               Flexible(
                 child: Text(_styleLabel[q.style]!, style: t.titleMedium),
               ),
+              const Spacer(),
+              if (q.fromWorksheet)
+                const Pill('📄 From the worksheet', bg: C.skyS, fg: C.skyT)
+              else if (!widget.isRecheck)
+                const Pill('New numbers', bg: C.grapeS, fg: C.grapeT),
             ],
           ),
           const SizedBox(height: 12),
@@ -331,6 +358,8 @@ class _QuestionTileState extends State<_QuestionTile> {
             ],
           ),
           if (mark != null) ...[
+            const SizedBox(height: 10),
+            _Praise(outcome: mark.outcome, methodName: widget.methodName),
             const SizedBox(height: 8),
             Text(
               _syncWords(c, mark),
@@ -340,6 +369,49 @@ class _QuestionTileState extends State<_QuestionTile> {
               ),
             ),
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// What to say after the moment, praising the effort and the method rather
+/// than the child, so even "not yet" ends warmly.
+class _Praise extends StatelessWidget {
+  final Outcome outcome;
+  final String methodName;
+  const _Praise({required this.outcome, required this.methodName});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    final method = methodName.split(' (').first.toLowerCase();
+    final words = switch (outcome) {
+      Outcome.explainedWhy =>
+        'You explained exactly how $method works. That’s real understanding.',
+      Outcome.gotAnswer => 'I like how you worked that out step by step.',
+      Outcome.withHint => 'You stuck with it. That’s how you get better.',
+      Outcome.notYet => 'Not yet is fine. We’ll try it again another day.',
+    };
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: C.mintS,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '♡ Say:',
+            style: t.bodySmall!.copyWith(
+              color: C.mintT,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text('“$words”', style: t.bodyMedium!.copyWith(color: C.mintT)),
         ],
       ),
     );

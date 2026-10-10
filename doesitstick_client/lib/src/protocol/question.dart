@@ -36,8 +36,9 @@ abstract class Question
     required this.listenFor,
     required this.hint,
     required this.checkedByCode,
+    bool? fromWorksheet,
     this.variantOfQuestionId,
-  });
+  }) : fromWorksheet = fromWorksheet ?? false;
 
   factory Question({
     int? id,
@@ -56,6 +57,7 @@ abstract class Question
     required String listenFor,
     required String hint,
     required bool checkedByCode,
+    bool? fromWorksheet,
     int? variantOfQuestionId,
   }) = _QuestionImpl;
 
@@ -85,6 +87,9 @@ abstract class Question
       checkedByCode: _isc.BoolJsonExtension.fromJson(
         jsonSerialization['checkedByCode'],
       ),
+      fromWorksheet: jsonSerialization['fromWorksheet'] == null
+          ? null
+          : _isc.BoolJsonExtension.fromJson(jsonSerialization['fromWorksheet']),
       variantOfQuestionId: jsonSerialization['variantOfQuestionId'] as int?,
     );
   }
@@ -124,6 +129,9 @@ abstract class Question
 
   bool checkedByCode;
 
+  /// True when the numbers came off the child's own worksheet.
+  bool fromWorksheet;
+
   /// Set on re-check questions: the question this is a new variant of.
   int? variantOfQuestionId;
 
@@ -147,6 +155,7 @@ abstract class Question
     String? listenFor,
     String? hint,
     bool? checkedByCode,
+    bool? fromWorksheet,
     int? variantOfQuestionId,
   });
   @override
@@ -169,6 +178,7 @@ abstract class Question
       'listenFor': listenFor,
       'hint': hint,
       'checkedByCode': checkedByCode,
+      'fromWorksheet': fromWorksheet,
       if (variantOfQuestionId != null)
         'variantOfQuestionId': variantOfQuestionId,
     };
@@ -194,6 +204,7 @@ abstract class Question
       'listenFor': listenFor,
       'hint': hint,
       'checkedByCode': checkedByCode,
+      'fromWorksheet': fromWorksheet,
       if (variantOfQuestionId != null)
         'variantOfQuestionId': variantOfQuestionId,
     };
@@ -225,6 +236,7 @@ class _QuestionImpl extends Question {
     required String listenFor,
     required String hint,
     required bool checkedByCode,
+    bool? fromWorksheet,
     int? variantOfQuestionId,
   }) : super._(
          id: id,
@@ -243,6 +255,7 @@ class _QuestionImpl extends Question {
          listenFor: listenFor,
          hint: hint,
          checkedByCode: checkedByCode,
+         fromWorksheet: fromWorksheet,
          variantOfQuestionId: variantOfQuestionId,
        );
 
@@ -267,6 +280,7 @@ class _QuestionImpl extends Question {
     String? listenFor,
     String? hint,
     bool? checkedByCode,
+    bool? fromWorksheet,
     Object? variantOfQuestionId = _Undefined,
   }) {
     return Question(
@@ -286,6 +300,7 @@ class _QuestionImpl extends Question {
       listenFor: listenFor ?? this.listenFor,
       hint: hint ?? this.hint,
       checkedByCode: checkedByCode ?? this.checkedByCode,
+      fromWorksheet: fromWorksheet ?? this.fromWorksheet,
       variantOfQuestionId: variantOfQuestionId is int?
           ? variantOfQuestionId
           : this.variantOfQuestionId,

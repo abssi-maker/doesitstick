@@ -93,6 +93,9 @@ class GeneratedQuestion {
   final String listenFor;
   final String hint;
 
+  /// True when the numbers were read off the child's own worksheet.
+  final bool fromWorksheet;
+
   const GeneratedQuestion({
     required this.concept,
     required this.style,
@@ -106,7 +109,24 @@ class GeneratedQuestion {
     required this.methodNote,
     required this.listenFor,
     required this.hint,
+    this.fromWorksheet = false,
   });
+
+  GeneratedQuestion fromTheWorksheet() => GeneratedQuestion(
+    concept: concept,
+    style: style,
+    seed: seed,
+    operands: operands,
+    prompt: prompt,
+    expectedAnswer: expectedAnswer,
+    answerValue: answerValue,
+    shownWrong: shownWrong,
+    diagnosis: diagnosis,
+    methodNote: methodNote,
+    listenFor: listenFor,
+    hint: hint,
+    fromWorksheet: true,
+  );
 }
 
 class QuestionGenerationException implements Exception {
@@ -146,14 +166,33 @@ class QuestionGenerator {
   }
 
   /// Three questions for tonight: answer it, explain it, catch a mistake.
-  /// Each uses different numbers from the others.
-  static List<GeneratedQuestion> tonightSet(ConceptId concept, int seed) {
+  /// Problems read off the worksheet ([worksheet], as operands) are used
+  /// first, in order, when they fit the concept and pass the same check as
+  /// generated ones; any gap is filled with new numbers. Each question uses
+  /// different numbers from the others.
+  static List<GeneratedQuestion> tonightSet(
+    ConceptId concept,
+    int seed, {
+    List<List<int>> worksheet = const [],
+  }) {
     final used = <String>{};
     final out = <GeneratedQuestion>[];
     for (var i = 0; i < tonightStyles.length; i++) {
-      final q = generateChecked(
+      final style = tonightStyles[i];
+      GeneratedQuestion? q;
+      for (final ops in worksheet) {
+        if (used.contains(ops.join(',')) || !fits(concept, style, ops)) {
+          continue;
+        }
+        final candidate = build(concept, style, seed, ops);
+        if (QuestionChecker.check(candidate).isEmpty) {
+          q = candidate.fromTheWorksheet();
+          break;
+        }
+      }
+      q ??= generateChecked(
         concept,
-        tonightStyles[i],
+        style,
         seed + i * 104729,
         avoidOperands: used,
       );
@@ -161,6 +200,91 @@ class QuestionGenerator {
       out.add(q);
     }
     return out;
+  }
+
+  /// Whether [ops] are numbers this concept's method and its modeled
+  /// mistake work for, e.g. a 2-digit × 1-digit product with a carried ten.
+  static bool fits(ConceptId concept, QuestionStyle style, List<int> ops) {
+    final mistake = style == QuestionStyle.catchMistake;
+    switch (concept) {
+      case ConceptId.multiply2x1:
+        if (ops.length != 2) return false;
+        final a = ops[0], b = ops[1];
+        return a >= 11 &&
+            a <= 99 &&
+            a % 10 != 0 &&
+            b >= 2 &&
+            b <= 9 &&
+            (!mistake || (a % 10) * b >= 10);
+      case ConceptId.multiply2x2:
+        if (ops.length != 2) return false;
+        final a = ops[0], b = ops[1];
+        return a >= 11 &&
+            a <= 99 &&
+            b >= 11 &&
+            b <= 99 && //
+            a % 10 != 0 &&
+            b % 10 != 0;
+      case ConceptId.addRegroup:
+        if (ops.length != 2) return false;
+        final a = ops[0], b = ops[1];
+        final regroups =
+            a % 10 + b % 10 >= 10 || (a ~/ 10) % 10 + (b ~/ 10) % 10 >= 10;
+        return a >= 100 && b >= 100 && a + b <= 999 && regroups;
+      case ConceptId.subtractCountUp:
+        if (ops.length != 2) return false;
+        final a = ops[0], b = ops[1];
+        final borrows = a % 10 < b % 10 || (a ~/ 10) % 10 < (b ~/ 10) % 10;
+        return a <= 999 && b >= 100 && a - b >= 10 && borrows;
+      case ConceptId.divideByOneDigit:
+        if (ops.length != 2) return false;
+        final n = ops[0], d = ops[1];
+        if (d < 2 || d > 9 || n % d != 0) return false;
+        final q = n ~/ d;
+        return q >= 11 && q <= 99 && q % 10 != 0;
+      case ConceptId.equivalentFractions:
+        if (ops.length != 3) return false;
+        final num = ops[0], den = ops[1], k = ops[2];
+        return num >= 1 && num < den && den <= 12 && k >= 2 && k <= 10;
+    }
+  }
+
+  /// Reads a problem as printed on a worksheet ("278 + 146 =", "7 × 46",
+  /// "156 ÷ 6", "2/3 = ?/12") into this concept's operands, or null when it
+  /// is a different kind of problem.
+  static List<int>? parseProblem(ConceptId concept, String text) {
+    final t = text
+        .replaceAll(RegExp('[−–—]'), '-')
+        .replaceAll(RegExp('[xX*·]'), '×')
+        .replaceAll(':', '÷');
+    if (concept == ConceptId.equivalentFractions) {
+      final m = RegExp(
+        r'(\d+)\s*/\s*(\d+)\s*=\s*(?:\?|□|_+|\(\s*\)|[a-z])\s*/\s*(\d+)',
+      ).firstMatch(t);
+      if (m == null) return null;
+      final num = int.parse(m[1]!), den = int.parse(m[2]!);
+      final big = int.parse(m[3]!);
+      if (den == 0 || big % den != 0) return null;
+      return [num, den, big ~/ den];
+    }
+    final m = RegExp(r'(\d+)\s*([-+×÷/])\s*(\d+)').firstMatch(t);
+    if (m == null) return null;
+    final x = int.parse(m[1]!), op = m[2]!, y = int.parse(m[3]!);
+    switch (concept) {
+      case ConceptId.addRegroup:
+        return op == '+' ? [x, y] : null;
+      case ConceptId.subtractCountUp:
+        return op == '-' ? [x, y] : null;
+      case ConceptId.multiply2x1:
+        if (op != '×') return null;
+        return x < 10 ? [y, x] : [x, y];
+      case ConceptId.multiply2x2:
+        return op == '×' ? [x, y] : null;
+      case ConceptId.divideByOneDigit:
+        return op == '÷' || op == '/' ? [x, y] : null;
+      case ConceptId.equivalentFractions:
+        return null;
+    }
   }
 
   static GeneratedQuestion _generate(
@@ -171,19 +295,77 @@ class QuestionGenerator {
     // Scramble the seed: Dart's Random gives similar first numbers for
     // nearby seeds, which made the three questions look alike.
     final r = Random((seed * 0x9E3779B1 + 0x7F4A7C15) & 0x7FFFFFFF);
+    return build(concept, style, seed, _pick(concept, r));
+  }
+
+  /// Random numbers in the ranges each concept practises.
+  static List<int> _pick(ConceptId concept, Random r) {
     switch (concept) {
       case ConceptId.multiply2x1:
-        return _multiply2x1(style, seed, r);
+        late int tensDigit, o, b;
+        do {
+          tensDigit = _between(r, 2, 9);
+          o = _between(r, 2, 9);
+          b = _between(r, 3, 9);
+        } while (o * b < 10); // needs a carried ten so the mistake is visible
+        return [tensDigit * 10 + o, b];
       case ConceptId.multiply2x2:
-        return _multiply2x2(style, seed, r);
+        final ta = _between(r, 1, 4), oa = _between(r, 1, 9);
+        final tb = _between(r, 1, 4), ob = _between(r, 1, 9);
+        return [ta * 10 + oa, tb * 10 + ob];
       case ConceptId.addRegroup:
-        return _addRegroup(style, seed, r);
+        late int a, b;
+        do {
+          a = _between(r, 120, 699);
+          b = _between(r, 110, 399);
+        } while (a ~/ 100 + b ~/ 100 > 8 ||
+            (a % 10 + b % 10 < 10 && (a ~/ 10) % 10 + (b ~/ 10) % 10 < 10));
+        return [a, b];
       case ConceptId.subtractCountUp:
-        return _subtractCountUp(style, seed, r);
+        late int a, b;
+        do {
+          a = _between(r, 301, 950);
+          b = _between(r, 112, a - 60);
+        } while (!(a % 10 < b % 10 || (a ~/ 10) % 10 < (b ~/ 10) % 10));
+        return [a, b];
       case ConceptId.divideByOneDigit:
-        return _divide(style, seed, r);
+        late int d, q;
+        do {
+          d = _between(r, 3, 9);
+          q = _between(r, 12, 39);
+        } while (q % 10 == 0);
+        return [d * q, d];
       case ConceptId.equivalentFractions:
-        return _fractions(style, seed, r);
+        late int num, den, k;
+        do {
+          den = _between(r, 2, 6);
+          num = _between(r, 1, den - 1);
+          k = _between(r, 2, 5);
+        } while (_gcd(num, den) != 1);
+        return [num, den, k];
+    }
+  }
+
+  /// Builds a question from numbers already known to [fits] the concept.
+  static GeneratedQuestion build(
+    ConceptId concept,
+    QuestionStyle style,
+    int seed,
+    List<int> ops,
+  ) {
+    switch (concept) {
+      case ConceptId.multiply2x1:
+        return _multiply2x1(style, seed, ops);
+      case ConceptId.multiply2x2:
+        return _multiply2x2(style, seed, ops);
+      case ConceptId.addRegroup:
+        return _addRegroup(style, seed, ops);
+      case ConceptId.subtractCountUp:
+        return _subtractCountUp(style, seed, ops);
+      case ConceptId.divideByOneDigit:
+        return _divide(style, seed, ops);
+      case ConceptId.equivalentFractions:
+        return _fractions(style, seed, ops);
     }
   }
 
@@ -192,16 +374,11 @@ class QuestionGenerator {
   static GeneratedQuestion _multiply2x1(
     QuestionStyle style,
     int seed,
-    Random r,
+    List<int> ops,
   ) {
-    late int tensDigit, o, b;
-    do {
-      tensDigit = _between(r, 2, 9);
-      o = _between(r, 2, 9);
-      b = _between(r, 3, 9);
-    } while (o * b < 10); // needs a carried ten so the mistake is visible
+    final a = ops[0], b = ops[1];
+    final tensDigit = a ~/ 10, o = a % 10;
     final t = tensDigit * 10;
-    final a = t + o;
     final p1 = t * b, p2 = o * b;
     final ans = p1 + p2;
     final carry = p2 ~/ 10;
@@ -270,11 +447,10 @@ class QuestionGenerator {
   static GeneratedQuestion _multiply2x2(
     QuestionStyle style,
     int seed,
-    Random r,
+    List<int> ops,
   ) {
-    final ta = _between(r, 1, 4), oa = _between(r, 1, 9);
-    final tb = _between(r, 1, 4), ob = _between(r, 1, 9);
-    final a = ta * 10 + oa, b = tb * 10 + ob;
+    final a = ops[0], b = ops[1];
+    final ta = a ~/ 10, oa = a % 10, tb = b ~/ 10, ob = b % 10;
     final p1 = ta * 10 * tb * 10, p2 = ta * 10 * ob;
     final p3 = oa * tb * 10, p4 = oa * ob;
     final ans = p1 + p2 + p3 + p4;
@@ -339,14 +515,9 @@ class QuestionGenerator {
   static GeneratedQuestion _addRegroup(
     QuestionStyle style,
     int seed,
-    Random r,
+    List<int> ops,
   ) {
-    late int a, b;
-    do {
-      a = _between(r, 120, 699);
-      b = _between(r, 110, 399);
-    } while (a ~/ 100 + b ~/ 100 > 8 ||
-        (a % 10 + b % 10 < 10 && (a ~/ 10) % 10 + (b ~/ 10) % 10 < 10));
+    final a = ops[0], b = ops[1];
     final h = (a ~/ 100 + b ~/ 100) * 100;
     final t = ((a ~/ 10) % 10 + (b ~/ 10) % 10) * 10;
     final o = a % 10 + b % 10;
@@ -436,13 +607,9 @@ class QuestionGenerator {
   static GeneratedQuestion _subtractCountUp(
     QuestionStyle style,
     int seed,
-    Random r,
+    List<int> ops,
   ) {
-    late int a, b;
-    do {
-      a = _between(r, 301, 950);
-      b = _between(r, 112, a - 60);
-    } while (!(a % 10 < b % 10 || (a ~/ 10) % 10 < (b ~/ 10) % 10));
+    final a = ops[0], b = ops[1];
     final landmarks = countUpLandmarks(b, a);
     var cur = b;
     final jumps = <int>[];
@@ -513,13 +680,13 @@ class QuestionGenerator {
     }
   }
 
-  static GeneratedQuestion _divide(QuestionStyle style, int seed, Random r) {
-    late int d, q;
-    do {
-      d = _between(r, 3, 9);
-      q = _between(r, 12, 39);
-    } while (q % 10 == 0);
-    final n = d * q;
+  static GeneratedQuestion _divide(
+    QuestionStyle style,
+    int seed,
+    List<int> ops,
+  ) {
+    final n = ops[0], d = ops[1];
+    final q = n ~/ d;
     final q10 = (q ~/ 10) * 10, q1 = q % 10;
     final chunk = q10 * d, rest = n - chunk;
     final ans = q10 + q1;
@@ -580,13 +747,12 @@ class QuestionGenerator {
 
   static int _gcd(int a, int b) => b == 0 ? a : _gcd(b, a % b);
 
-  static GeneratedQuestion _fractions(QuestionStyle style, int seed, Random r) {
-    late int num, den, k;
-    do {
-      den = _between(r, 2, 6);
-      num = _between(r, 1, den - 1);
-      k = _between(r, 2, 5);
-    } while (_gcd(num, den) != 1);
+  static GeneratedQuestion _fractions(
+    QuestionStyle style,
+    int seed,
+    List<int> ops,
+  ) {
+    final num = ops[0], den = ops[1], k = ops[2];
     final big = den * k;
     final ans = num * k;
     final note =

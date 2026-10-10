@@ -53,6 +53,7 @@ class WorksheetService {
             session,
             ws.familyId,
             concept,
+            worksheetProblems: reading.problems,
           );
           result = ws.copyWith(
             status: WorksheetStatus.ready,
@@ -148,6 +149,7 @@ class WorksheetService {
       session,
       member.familyId,
       concept,
+      worksheetProblems: ws.detectedProblems ?? const [],
     );
     final updated = await Worksheet.db.updateRow(
       session,

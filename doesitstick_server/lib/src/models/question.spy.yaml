@@ -18,5 +18,7 @@ fields:
   listenFor: String
   hint: String
   checkedByCode: bool
+  ### True when the numbers came off the child's own worksheet.
+  fromWorksheet: bool, default=false
   ### Set on re-check questions: the question this is a new variant of.
   variantOfQuestionId: int?

@@ -35,21 +35,31 @@ class CardService {
       listenFor: g.listenFor,
       hint: g.hint,
       checkedByCode: QuestionChecker.check(g).isEmpty,
+      fromWorksheet: g.fromWorksheet,
       variantOfQuestionId: variantOf,
     );
   }
 
-  /// Tonight's card: solve, explain, catch-the-mistake. Generation and the
-  /// independent check both run before the card exists, so a parent never
-  /// sees an unchecked answer.
+  /// Tonight's card: solve, explain, catch-the-mistake. Problems read off the
+  /// worksheet ([worksheetProblems], as printed) are used when they fit the
+  /// concept. Generation and the independent check both run before the card
+  /// exists, so a parent never sees an unchecked answer.
   static Future<QuestionCard> createTonightCard(
     Session session,
     int familyId,
     ConceptId concept, {
+    List<String> worksheetProblems = const [],
     int? seed,
     Transaction? transaction,
   }) async {
-    final generated = QuestionGenerator.tonightSet(concept, seed ?? newSeed());
+    final generated = QuestionGenerator.tonightSet(
+      concept,
+      seed ?? newSeed(),
+      worksheet: [
+        for (final p in worksheetProblems)
+          ?QuestionGenerator.parseProblem(concept, p),
+      ],
+    );
     Future<QuestionCard> run(Transaction tx) async {
       final card = await QuestionCard.db.insertRow(
         session,

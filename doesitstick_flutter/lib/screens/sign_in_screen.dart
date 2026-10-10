@@ -5,6 +5,54 @@ import '../client.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
 
+/// Every feature, in the order a parent meets them. Shown on the welcome
+/// screen so the promise is clear before signing in.
+const _features = [
+  (
+    '📸',
+    'Snap the worksheet',
+    'Gemini reads the problems and the topic. The photo is deleted right '
+        'after.',
+  ),
+  (
+    '🗣️',
+    'The words to say',
+    'The class method, what to ask, and hints that never give the answer '
+        'away.',
+  ),
+  (
+    '♡',
+    'A kind ending',
+    'When it isn’t clicking tonight, a warm way to stop. No yelling.',
+  ),
+  (
+    '✓',
+    'Every answer double-checked',
+    'The AI only reads the page. Serverpod code builds and re-checks every '
+        'number.',
+  ),
+  (
+    '👪',
+    'Both parents in sync',
+    'Your partner sees each answer live on their phone.',
+  ),
+  (
+    '🔁',
+    'Did it stick?',
+    'A 1-minute check on day 2 and day 7, with new numbers.',
+  ),
+  (
+    '🌼',
+    'What stuck this week',
+    'A weekly summary of what really stuck.',
+  ),
+  (
+    '📶',
+    'Works with bad Wi-Fi',
+    'Marks are saved on the phone and sent when you’re back online.',
+  ),
+];
+
 class SignInScreen extends StatefulWidget {
   final Widget child;
   const SignInScreen({super.key, required this.child});
@@ -42,69 +90,193 @@ class _SignInScreenState extends State<SignInScreen> {
   @override
   Widget build(BuildContext context) {
     if (_isSignedIn) return widget.child;
-    final t = Theme.of(context).textTheme;
     return Scaffold(
       body: SafeArea(
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: ListView(
-              padding: const EdgeInsets.all(22),
+        child: LayoutBuilder(
+          builder: (context, box) {
+            if (box.maxWidth >= 900) {
+              return Row(
+                children: [
+                  Expanded(
+                    flex: 6,
+                    child: Container(
+                      color: C.grapeS,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(56, 56, 56, 40),
+                        children: const [
+                          _Pitch(),
+                          SizedBox(height: 32),
+                          _FeatureGrid(columns: 2),
+                          SizedBox(height: 28),
+                          _Evidence(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 4,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 400),
+                        child: ListView(
+                          shrinkWrap: true,
+                          padding: const EdgeInsets.all(32),
+                          children: _start(context),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: ListView(
+                  padding: const EdgeInsets.all(22),
+                  children: [
+                    const SizedBox(height: 16),
+                    const _Pitch(),
+                    const SizedBox(height: 22),
+                    ..._start(context),
+                    const SizedBox(height: 28),
+                    const _FeatureGrid(columns: 1),
+                    const SizedBox(height: 16),
+                    const _Evidence(),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _start(BuildContext context) => [
+    const Stick(says: 'No account needed. Just tap start.'),
+    const SizedBox(height: 18),
+    ListenableBuilder(
+      listenable: _anonymous,
+      builder: (context, _) => FilledButton(
+        key: const Key('getStarted'),
+        onPressed: _anonymous.isLoading ? null : _anonymous.login,
+        child: Text(_anonymous.isLoading ? 'Starting…' : 'Get started'),
+      ),
+    ),
+    const SizedBox(height: 8),
+    TextButton(
+      onPressed: () => setState(() => _showEmail = !_showEmail),
+      style: TextButton.styleFrom(foregroundColor: C.ink2),
+      child: Text(_showEmail ? 'Hide email sign-in' : 'Sign in with email'),
+    ),
+    if (_showEmail)
+      Panel(
+        padding: const EdgeInsets.all(8),
+        child: SignInWidget(
+          client: client,
+          disableAnonymousSignInWidget: true,
+          onError: (error) => toast(context, 'Sign-in failed: $error'),
+        ),
+      ),
+  ];
+}
+
+class _Pitch extends StatelessWidget {
+  const _Pitch();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Eyebrow('Did It Stick · calm math homework'),
+        const SizedBox(height: 8),
+        Text('Math homework, without the yelling.', style: t.displaySmall),
+        const SizedBox(height: 12),
+        Text(
+          'You don’t need to be a math teacher. Snap tonight’s worksheet and '
+          'we’ll tell you what to say, the way the class teaches it, and when '
+          'to stop. Then we check it stuck.',
+          style: t.bodyLarge!.copyWith(color: C.ink2),
+        ),
+      ],
+    );
+  }
+}
+
+class _FeatureGrid extends StatelessWidget {
+  final int columns;
+  const _FeatureGrid({required this.columns});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    Widget tile((String, String, String) f) => Panel(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 32,
+            child: Center(
+              child: Text(f.$1, style: const TextStyle(fontSize: 24)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 24),
-                const Eyebrow('Did It Stick'),
-                const SizedBox(height: 6),
-                Text('Did tonight’s math really click?', style: t.displaySmall),
-                const SizedBox(height: 10),
-                Text(
-                  'Snap the worksheet. Ask 3 quick questions. '
-                  'We check back in 2 and 7 days.',
-                  style: t.bodyLarge!.copyWith(color: C.ink2),
-                ),
-                const SizedBox(height: 18),
-                const Stick(says: 'No account needed. Just tap start.'),
-                const SizedBox(height: 22),
-                ListenableBuilder(
-                  listenable: _anonymous,
-                  builder: (context, _) => FilledButton(
-                    key: const Key('getStarted'),
-                    onPressed: _anonymous.isLoading ? null : _anonymous.login,
-                    child: Text(
-                      _anonymous.isLoading ? 'Starting…' : 'Get started',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                TextButton(
-                  onPressed: () => setState(() => _showEmail = !_showEmail),
-                  style: TextButton.styleFrom(foregroundColor: C.ink2),
-                  child: Text(
-                    _showEmail ? 'Hide email sign-in' : 'Sign in with email',
-                  ),
-                ),
-                if (_showEmail)
-                  Panel(
-                    padding: const EdgeInsets.all(8),
-                    child: SignInWidget(
-                      client: client,
-                      disableAnonymousSignInWidget: true,
-                      onError: (error) =>
-                          toast(context, 'Sign-in failed: $error'),
-                    ),
-                  ),
-                const SizedBox(height: 16),
-                const Center(
-                  child: Pill(
-                    'Build 2 · one-tap start · Oct 9',
-                    bg: C.mintS,
-                    fg: C.mintT,
-                  ),
-                ),
+                Text(f.$2, style: t.titleMedium),
+                const SizedBox(height: 2),
+                Text(f.$3, style: t.bodySmall),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+    final rows = <Widget>[];
+    for (var i = 0; i < _features.length; i += columns) {
+      rows.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                for (
+                  var j = i;
+                  j < i + columns && j < _features.length;
+                  j++
+                ) ...[
+                  if (j > i) const SizedBox(width: 12),
+                  Expanded(child: tile(_features[j])),
+                ],
               ],
             ),
           ),
         ),
-      ),
+      );
+    }
+    return Column(children: rows);
+  }
+}
+
+class _Evidence extends StatelessWidget {
+  const _Evidence();
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Why calm matters: parents’ stress while helping, not their math '
+      'skills, is what lowers children’s math learning and confidence '
+      '(Maloney et al., Psychological Science, 2015).\n'
+      'Built with Flutter and Serverpod: one Dart codebase for the phone, '
+      'the web and the server.',
+      style: Theme.of(context).textTheme.bodySmall,
     );
   }
 }

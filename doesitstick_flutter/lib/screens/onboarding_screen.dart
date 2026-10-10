@@ -59,7 +59,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 const Eyebrow('Set up'),
                 const SizedBox(height: 6),
                 Text(
-                  _joining ? 'Join your partner' : 'Who are we checking on?',
+                  _joining
+                      ? 'Join your partner'
+                      : 'Whose homework are we helping with?',
                   style: t.displaySmall,
                 ),
                 const SizedBox(height: 16),

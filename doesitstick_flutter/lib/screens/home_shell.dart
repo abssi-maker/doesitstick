@@ -60,57 +60,118 @@ class _HomeShellState extends State<HomeShell> {
         listenable: controller,
         builder: (context, _) {
           final rechecks = controller.openRechecks.length;
-          return Scaffold(
-            body: SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 560),
-                  child: controller.home == null
-                      ? const Center(child: CircularProgressIndicator())
-                      : IndexedStack(
-                          index: _tab,
-                          children: [
-                            TonightScreen(
-                              onOpenRechecks: () => setState(() => _tab = 1),
-                            ),
-                            const RechecksScreen(),
-                            const DigestScreen(),
-                            const FamilyScreen(),
+          final content = controller.home == null
+              ? const Center(child: CircularProgressIndicator())
+              : IndexedStack(
+                  index: _tab,
+                  children: [
+                    TonightScreen(
+                      onOpenRechecks: () => setState(() => _tab = 1),
+                    ),
+                    const RechecksScreen(),
+                    const DigestScreen(),
+                    const FamilyScreen(),
+                  ],
+                );
+          final recheckIcon = Badge(
+            isLabelVisible: rechecks > 0,
+            label: Text('$rechecks'),
+            backgroundColor: C.sun,
+            textColor: C.ink,
+            child: const Icon(Icons.replay_rounded),
+          );
+          const tabs = [
+            (Icons.wb_twilight_rounded, 'Tonight'),
+            (Icons.replay_rounded, 'Re-checks'),
+            (Icons.local_florist_rounded, 'What stuck'),
+            (Icons.people_alt_rounded, 'Family'),
+          ];
+          return LayoutBuilder(
+            builder: (context, box) {
+              // Laptops and tablets (and judges on the web): a side rail
+              // with the promise in view; phones keep the bottom bar.
+              if (box.maxWidth >= 900) {
+                return Scaffold(
+                  body: SafeArea(
+                    child: Row(
+                      children: [
+                        NavigationRail(
+                          extended: box.maxWidth >= 1100,
+                          backgroundColor: C.paper,
+                          selectedIndex: _tab,
+                          onDestinationSelected: (i) =>
+                              setState(() => _tab = i),
+                          leading: _RailBrand(compact: box.maxWidth < 1100),
+                          destinations: [
+                            for (var i = 0; i < tabs.length; i++)
+                              NavigationRailDestination(
+                                icon: i == 1 ? recheckIcon : Icon(tabs[i].$1),
+                                label: Text(tabs[i].$2),
+                              ),
                           ],
                         ),
-                ),
-              ),
-            ),
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: _tab,
-              onDestinationSelected: (i) => setState(() => _tab = i),
-              destinations: [
-                const NavigationDestination(
-                  icon: Icon(Icons.wb_twilight_rounded),
-                  label: 'Tonight',
-                ),
-                NavigationDestination(
-                  icon: Badge(
-                    isLabelVisible: rechecks > 0,
-                    label: Text('$rechecks'),
-                    backgroundColor: C.sun,
-                    textColor: C.ink,
-                    child: const Icon(Icons.replay_rounded),
+                        const VerticalDivider(width: 1, color: C.line),
+                        Expanded(
+                          child: Center(
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 680),
+                              child: content,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  label: 'Re-checks',
+                );
+              }
+              return Scaffold(
+                body: SafeArea(
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 560),
+                      child: content,
+                    ),
+                  ),
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.local_florist_rounded),
-                  label: 'What stuck',
+                bottomNavigationBar: NavigationBar(
+                  selectedIndex: _tab,
+                  onDestinationSelected: (i) => setState(() => _tab = i),
+                  destinations: [
+                    for (var i = 0; i < tabs.length; i++)
+                      NavigationDestination(
+                        icon: i == 1 ? recheckIcon : Icon(tabs[i].$1),
+                        label: tabs[i].$2,
+                      ),
+                  ],
                 ),
-                const NavigationDestination(
-                  icon: Icon(Icons.people_alt_rounded),
-                  label: 'Family',
-                ),
-              ],
-            ),
+              );
+            },
           );
         },
+      ),
+    );
+  }
+}
+
+/// Name and promise at the top of the side rail.
+class _RailBrand extends StatelessWidget {
+  final bool compact;
+  const _RailBrand({required this.compact});
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(8, 16, 8, 24),
+      child: Column(
+        children: [
+          const Text('🌱', style: TextStyle(fontSize: 30)),
+          if (!compact) ...[
+            const SizedBox(height: 4),
+            Text('Did It Stick', style: t.titleMedium),
+            Text('Calm math homework', style: t.bodySmall),
+          ],
+        ],
       ),
     );
   }

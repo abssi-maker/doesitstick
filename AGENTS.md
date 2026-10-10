@@ -2,7 +2,7 @@
 
 Tells a parent in about 2 minutes whether their child (grades 3–5) really understood tonight's math homework. Two parents share one family; the child has no account.
 
-Flow: photo → background reader (Gemini) names the concept → server code builds 3 questions (solve, explain, catch-the-mistake) and re-checks every answer → both phones see the card → parents mark Not yet / With a hint / Got the answer / Explained why → re-checks with new numbers on day 2 (if anything was shaky) and day 7 → weekly "what stuck" digest, shareable at `/s/<token>`.
+Flow: photo → background reader (Gemini) names the concept → server code builds 3 coaching questions (solve, explain, catch-the-mistake) from the worksheet’s own problems when they fit, and re-checks every answer → both phones see the card → parents mark Not yet / With a hint / Got the answer / Explained why → re-checks with new numbers on day 2 (if anything was shaky) and day 7 → weekly "what stuck" digest, shareable at `/s/<token>`.
 
 Server map (`doesitstick_server/lib/src/`):
 

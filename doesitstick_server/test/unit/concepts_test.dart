@@ -161,4 +161,117 @@ void main() {
       },
     );
   });
+
+  group('Given problems read off a worksheet', () {
+    test('when they are printed in different ways then they are parsed', () {
+      expect(
+        QuestionGenerator.parseProblem(ConceptId.addRegroup, '278 + 146 ='),
+        [278, 146],
+      );
+      expect(
+        QuestionGenerator.parseProblem(ConceptId.subtractCountUp, '403 − 178'),
+        [403, 178],
+      );
+      expect(
+        QuestionGenerator.parseProblem(ConceptId.multiply2x1, '7 x 46'),
+        [46, 7],
+      );
+      expect(
+        QuestionGenerator.parseProblem(ConceptId.divideByOneDigit, '156 ÷ 6'),
+        [156, 6],
+      );
+      expect(
+        QuestionGenerator.parseProblem(
+          ConceptId.equivalentFractions,
+          '2/3 = ?/12',
+        ),
+        [2, 3, 4],
+      );
+    });
+
+    test('when a problem is a different operation then it is skipped', () {
+      expect(
+        QuestionGenerator.parseProblem(ConceptId.addRegroup, '46 × 7'),
+        isNull,
+      );
+      expect(
+        QuestionGenerator.parseProblem(ConceptId.multiply2x1, 'Name: Sam'),
+        isNull,
+      );
+    });
+
+    test('when they fit the concept then tonight uses them, checked', () {
+      final set = QuestionGenerator.tonightSet(
+        ConceptId.multiply2x1,
+        7,
+        worksheet: [
+          [46, 7],
+          [23, 4],
+          [58, 6],
+        ],
+      );
+      expect(
+        [for (final q in set) q.operands],
+        [
+          [46, 7],
+          [23, 4],
+          [58, 6],
+        ],
+      );
+      expect(set.every((q) => q.fromWorksheet), isTrue);
+      for (final q in set) {
+        expect(QuestionChecker.check(q), isEmpty, reason: q.prompt);
+      }
+    });
+
+    test('when a problem has no carry then it is not used for the mistake', () {
+      // 21 × 4 has no carried ten, so the "forgot the carry" mistake would
+      // equal the right answer; the catch question gets other numbers.
+      final set = QuestionGenerator.tonightSet(
+        ConceptId.multiply2x1,
+        7,
+        worksheet: [
+          [46, 7],
+          [38, 5],
+          [21, 4],
+        ],
+      );
+      expect(set[2].fromWorksheet, isFalse);
+      expect(set[2].operands, isNot([21, 4]));
+      expect(set[2].shownWrong, isNot(set[2].answerValue));
+    });
+
+    test(
+      'when a misread problem breaks the rules then new numbers are used',
+      () {
+        final set = QuestionGenerator.tonightSet(
+          ConceptId.addRegroup,
+          3,
+          worksheet: [
+            [1278, 146], // misread: 4 digits
+            [121, 111], // no regrouping
+          ],
+        );
+        expect(set.any((q) => q.fromWorksheet), isFalse);
+        for (final q in set) {
+          expect(QuestionChecker.check(q), isEmpty);
+        }
+      },
+    );
+
+    test('when every concept gets its own example then it fits', () {
+      for (final concept in ConceptId.values) {
+        final ops = QuestionGenerator.parseProblem(
+          concept,
+          conceptInfos[concept]!.example,
+        );
+        expect(ops, isNotNull, reason: '$concept');
+        expect(
+          QuestionGenerator.fits(concept, QuestionStyle.solve, ops!),
+          isTrue,
+          reason: '$concept $ops',
+        );
+      }
+    });
+  });
 }
