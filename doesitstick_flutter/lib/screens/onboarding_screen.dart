@@ -31,7 +31,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       }
       widget.onDone();
     } catch (e) {
-      if (mounted) toast(context, errorText(e));
+      // The family may have been set up even though the reply was lost;
+      // if so, carry on instead of leaving the parent on this screen.
+      final family = await client.family.me().catchError((_) => null);
+      if (family != null) {
+        widget.onDone();
+      } else if (mounted) {
+        toast(context, errorText(e));
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -111,7 +118,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextButton(
-                  onPressed: () => client.auth.signOutDevice(),
+                  onPressed: () async {
+                    if (await confirmSignOut(context)) {
+                      await client.auth.signOutDevice();
+                    }
+                  },
                   style: TextButton.styleFrom(foregroundColor: C.ink2),
                   child: const Text('Sign out'),
                 ),

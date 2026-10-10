@@ -45,9 +45,10 @@ class FamilyService {
     required String parentName,
   }) async {
     final auth = session.authenticated!;
-    if (await memberOf(session) != null) {
-      throw DidItStickException(message: 'You are already in a family.');
-    }
+    // A retry after a lost reply (slow network, app closed mid-call) must not
+    // strand the parent: they already have a family, so hand it back.
+    final existing = await memberOf(session);
+    if (existing != null) return existing;
     final child = _clean(childName, 'child’s name');
     final parent = _clean(parentName, 'your name');
     return session.db.transaction((tx) async {
@@ -74,9 +75,7 @@ class FamilyService {
     required String parentName,
   }) async {
     final auth = session.authenticated!;
-    if (await memberOf(session) != null) {
-      throw DidItStickException(message: 'You are already in a family.');
-    }
+    final existing = await memberOf(session);
     final parent = _clean(parentName, 'your name');
     final family = await Family.db.findFirstRow(
       session,
@@ -84,6 +83,12 @@ class FamilyService {
     );
     if (family == null) {
       throw DidItStickException(message: 'That code doesn’t match a family.');
+    }
+    if (existing != null) {
+      // Retrying a join that already went through is fine; switching
+      // families is not.
+      if (existing.familyId == family.id) return existing;
+      throw DidItStickException(message: 'You are already in another family.');
     }
     final count = await FamilyMember.db.count(
       session,

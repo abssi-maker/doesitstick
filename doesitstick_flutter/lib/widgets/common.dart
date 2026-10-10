@@ -150,5 +150,38 @@ String errorText(Object e) {
   if (e is DidItStickException) return e.message;
   final s = e.toString();
   final m = RegExp(r'message: ([^,)]+)').firstMatch(s);
-  return m?.group(1) ?? 'Something went wrong. Please try again.';
+  if (m != null) return m.group(1)!;
+  if (RegExp(
+    r'Socket|Timeout|connection|host lookup|Network',
+    caseSensitive: false,
+  ).hasMatch(s)) {
+    return 'Can’t reach Did It Stick. Check your connection and try again.';
+  }
+  return 'Something went wrong. Please try again.';
+}
+
+/// One-tap accounts can't be signed back into, so warn before signing out.
+Future<bool> confirmSignOut(BuildContext context) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Sign out of this phone?'),
+      content: const Text(
+        'If you started with one tap, this phone can’t get back into this '
+        'family afterwards. Your partner keeps everything. '
+        'If you signed in with email, you can sign back in anytime.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('Stay signed in'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context, true),
+          child: const Text('Sign out'),
+        ),
+      ],
+    ),
+  );
+  return ok ?? false;
 }

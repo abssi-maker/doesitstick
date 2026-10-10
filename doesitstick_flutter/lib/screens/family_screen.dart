@@ -108,7 +108,11 @@ class FamilyScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         OutlinedButton(
-          onPressed: () => client.auth.signOutDevice(),
+          onPressed: () async {
+            if (await confirmSignOut(context)) {
+              await client.auth.signOutDevice();
+            }
+          },
           child: const Text('Sign out'),
         ),
       ],

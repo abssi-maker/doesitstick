@@ -64,6 +64,39 @@ void main() {
       },
     );
 
+    test(
+      'when create is retried after a lost reply then the same family returns',
+      () async {
+        final again = await endpoints.family.create(alex, 'Maya', 'Alex');
+        expect(again.familyId, family.familyId);
+        expect(again.parents, ['Alex', 'Sam']);
+      },
+    );
+
+    test(
+      'when join is retried with the same code then the same family returns',
+      () async {
+        final again = await endpoints.family.join(
+          sam,
+          family.inviteCode,
+          'Sam',
+        );
+        expect(again.familyId, family.familyId);
+        expect(again.parents, ['Alex', 'Sam']);
+      },
+    );
+
+    test(
+      'when a parent tries to join another family then they are turned away',
+      () async {
+        final leo = await endpoints.family.create(other, 'Leo', 'Pat');
+        await expectLater(
+          endpoints.family.join(sam, leo.inviteCode, 'Sam'),
+          throwsA(isA<DidItStickException>()),
+        );
+      },
+    );
+
     test('when a topic is picked then both phones get 3 code-checked '
         'questions with answers and a method note', () async {
       final card = await tonight(ConceptId.multiply2x1);
