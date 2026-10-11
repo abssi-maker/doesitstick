@@ -6,9 +6,11 @@ import 'package:doesitstick_client/doesitstick_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../client.dart';
+import 'offline_marks.dart';
 
 enum SyncState { live, connecting, offline }
 
@@ -41,6 +43,14 @@ class FamilyController extends ChangeNotifier {
   final List<MarkInput> outbox = [];
   final Set<String> _inFlight = {};
   StreamSubscription<FamilyEvent>? _sub;
+
+  /// Serverpod offline sync for marks; null until open, or where it can't
+  /// run (then marks go through [outbox]).
+  OfflineMarks? _offline;
+  bool _openingOffline = false;
+
+  /// Whether marks sync with Serverpod offline sync on this device.
+  bool get usesOfflineSync => _offline != null;
   Timer? _retry;
   int _backoffSeconds = 1;
   bool _disposed = false;
@@ -57,6 +67,8 @@ class FamilyController extends ChangeNotifier {
     _prefs ??= await SharedPreferences.getInstance();
     _loadLocal();
     notifyListeners();
+    // Offline at launch: marks still save, from the cached family.
+    _openOffline();
     try {
       concepts = await client.family.concepts();
     } catch (_) {}
@@ -98,9 +110,42 @@ class FamilyController extends ChangeNotifier {
       home = h;
       await _prefs?.setString(_homeKey, jsonEncode(h.toJson()));
       _notify();
+      _openOffline();
     } catch (_) {
       // Keep showing the cached state; the stream retry will refetch.
     }
+  }
+
+  void _openOffline() {
+    final space = home?.family.syncSpace;
+    final user = client.auth.authInfo?.authUserId;
+    if (_offline != null || _openingOffline || space == null || user == null) {
+      return;
+    }
+    _openingOffline = true;
+    OfflineMarks.open(
+      user: user,
+      space: space,
+      onChange: _notify,
+      onSynced: _refreshSoon,
+    ).then((m) {
+      _openingOffline = false;
+      if (_disposed) {
+        unawaited(m?.close());
+        return;
+      }
+      _offline = m;
+      if (!demoOffline) m?.resume();
+      _notify();
+    });
+  }
+
+  Timer? _refreshTimer;
+
+  /// One refetch for a burst of sync rounds.
+  void _refreshSoon() {
+    _refreshTimer?.cancel();
+    _refreshTimer = Timer(const Duration(milliseconds: 300), refresh);
   }
 
   void _notify() {
@@ -145,12 +190,14 @@ class FamilyController extends ChangeNotifier {
   void setDemoOffline(bool offline) {
     demoOffline = offline;
     if (offline) {
+      unawaited(_offline?.pause());
       _retry?.cancel();
       _sub?.cancel();
       _sub = null;
       sync = SyncState.offline;
       _notify();
     } else {
+      _offline?.resume();
       _connect();
     }
   }
@@ -161,8 +208,14 @@ class FamilyController extends ChangeNotifier {
         '${List.generate(10, (_) => r.nextInt(36).toRadixString(36)).join()}';
   }
 
-  /// Saves the mark on this phone first, then sends it when possible.
+  /// Saves the mark on this phone first, then sends it when possible: with
+  /// offline sync when it runs here, otherwise through the outbox.
   Future<void> mark(Question q, Outcome outcome) async {
+    final offline = _offline;
+    if (offline != null && await offline.write(q, outcome, me)) {
+      _notify();
+      return;
+    }
     outbox.removeWhere(
       (m) => m.questionId == q.id && !_inFlight.contains(m.clientMarkId),
     );
@@ -220,6 +273,20 @@ class FamilyController extends ChangeNotifier {
       );
     }
     final latest = qv.latest;
+    final synced = _offline?.byQuestion[qv.question.id]?.lastOrNull;
+    if (synced != null &&
+        (latest == null || !synced.markedAt.isBefore(latest.markedAt))) {
+      final onServer = qv.marks.any((m) => m.id == synced.id);
+      return EffectiveMark(
+        synced.outcome,
+        synced.parentName,
+        onServer
+            ? MarkSync.shared
+            : (_offline!.connected && sync == SyncState.live
+                  ? MarkSync.sending
+                  : MarkSync.savedOnPhone),
+      );
+    }
     if (latest == null) return null;
     return EffectiveMark(latest.outcome, latest.parentName, MarkSync.shared);
   }
@@ -336,6 +403,8 @@ class FamilyController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _refreshTimer?.cancel();
+    unawaited(_offline?.close());
     _retry?.cancel();
     _sub?.cancel();
     _events.close();

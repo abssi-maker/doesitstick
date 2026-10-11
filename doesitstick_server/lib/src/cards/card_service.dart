@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_auth_idp_server/core.dart';
+import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart';
 
 import '../family/family_service.dart';
 import '../generated/protocol.dart';
@@ -158,7 +159,7 @@ class CardService {
     return marks.reduce((a, b) {
       final c = a.markedAt.compareTo(b.markedAt);
       if (c != 0) return c > 0 ? a : b;
-      return a.id! > b.id! ? a : b;
+      return a.id!.toString().compareTo(b.id!.toString()) > 0 ? a : b;
     });
   }
 
@@ -197,23 +198,23 @@ class CardService {
     Outcome.explainedWhy: 'explained why',
   };
 
-  /// Stores marks idempotently by clientMarkId, so an offline phone can
-  /// safely resend its whole queue. Returns the ids the server now holds.
+  /// The web app's online path (phones sync marks with offline sync
+  /// instead): writes marks into the family's sync space on the server, so
+  /// the partner's phone receives them too. The clientMarkId becomes the
+  /// mark's UUID, so re-sending a queue is idempotent. Returns the ids the
+  /// server now holds.
   static Future<List<String>> recordMarks(
     Session session,
     FamilyMember member,
     List<MarkInput> inputs,
   ) async {
     final accepted = <String>[];
-    final touchedCards = <int>{};
-    final events = <(int, String)>[];
     final now = DateTime.now().toUtc();
+    final user = session.authenticated!.authUserId;
+    final space = await FamilyService.ensureSpace(session, member.familyId);
     for (final input in inputs) {
-      final existing = await Mark.db.findFirstRow(
-        session,
-        where: (t) => t.clientMarkId.equals(input.clientMarkId),
-      );
-      if (existing != null) {
+      final id = markId(input.clientMarkId);
+      if (await Mark.db.findById(session, id) != null) {
         accepted.add(input.clientMarkId);
         continue;
       }
@@ -223,41 +224,96 @@ class CardService {
       final markedAt = input.markedAt.isAfter(now)
           ? now
           : input.markedAt.toUtc();
-      await Mark.db.insertRow(
-        session,
-        Mark(
-          questionId: question.id!,
-          cardId: question.cardId,
-          familyId: member.familyId,
-          outcome: input.outcome,
-          parentName: member.displayName,
-          authUserId: session.authenticated!.authUserId,
-          clientMarkId: input.clientMarkId,
-          markedAt: markedAt,
+      final db = syncDatabase(session);
+      await db.transactionForUser(
+        user,
+        (tx) => db.insertRow<Mark>(
+          Mark(
+            id: id,
+            questionId: question.id!,
+            cardId: question.cardId,
+            familyId: member.familyId,
+            outcome: input.outcome,
+            parentName: member.displayName,
+            authUserId: user,
+            markedAt: markedAt,
+          ),
+          transaction: tx,
         ),
+        spaceId: space,
       );
       accepted.add(input.clientMarkId);
-      touchedCards.add(question.cardId);
-      events.add((
-        question.cardId,
-        '${member.displayName}: Q${question.position + 1} '
-            '${_outcomeWords[input.outcome]}',
-      ));
     }
-    for (final cardId in touchedCards) {
+    await afterSync(session, member);
+    return accepted;
+  }
+
+  /// The CRDT-aware database for [session]: the session's own on a running
+  /// server. Under serverpod_test the session's database is a rollback proxy
+  /// that hides it, so the proxy is wrapped with the sync engine here.
+  static OfflineSyncDatabase syncDatabase(Session session) {
+    final db = session.db;
+    if (db is OfflineSyncDatabase) return db;
+    return offlineSyncDatabaseInterceptor(session, db) as OfflineSyncDatabase;
+  }
+
+  /// A mark's id from the phone: a UUID already, or (older phones) any
+  /// string, mapped to a stable UUID.
+  static UuidValue markId(String clientMarkId) {
+    try {
+      return UuidValue.withValidation(clientMarkId);
+    } on FormatException {
+      return UuidValue.fromString(
+        const Uuid().v5(Namespace.url.value, 'mark:$clientMarkId'),
+      );
+    }
+  }
+
+  /// Marks already announced to the family, by family id. Kept in memory;
+  /// after a restart only recent marks are announced.
+  static final _announced = <int, Set<UuidValue>>{};
+
+  /// Runs after a parent's marks reach the server, by offline sync or the
+  /// web endpoint: completes cards, schedules their re-checks, and tells the
+  /// other parent's phone what was marked.
+  static Future<void> afterSync(Session session, FamilyMember member) async {
+    final since = DateTime.now().toUtc().subtract(const Duration(days: 9));
+    final cards = await QuestionCard.db.find(
+      session,
+      where: (t) => t.familyId.equals(member.familyId) & (t.createdAt > since),
+    );
+    final marks = await Mark.db.find(
+      session,
+      where: (t) => t.cardId.inSet(cards.map((c) => c.id!).toSet()),
+    );
+    // After a restart nothing is remembered: treat anything older than a
+    // couple of minutes as already announced, and announce the rest.
+    final recent = DateTime.now().toUtc().subtract(const Duration(minutes: 2));
+    final known =
+        _announced[member.familyId] ??
+        {
+          for (final m in marks)
+            if (m.markedAt.isBefore(recent)) m.id!,
+        };
+    _announced[member.familyId] = marks.map((m) => m.id!).toSet();
+    final fresh = marks.where((m) => !known.contains(m.id)).toList();
+    for (final cardId in fresh.map((m) => m.cardId).toSet()) {
       await _afterMarks(session, cardId);
     }
-    for (final (cardId, message) in events) {
+    for (final m in fresh) {
+      final question = await Question.db.findById(session, m.questionId);
+      if (question == null) continue;
       await FamilyService.postEvent(
         session,
         member.familyId,
         kind: 'mark',
-        message: message,
-        actorName: member.displayName,
-        cardId: cardId,
+        message:
+            '${m.parentName}: Q${question.position + 1} '
+            '${_outcomeWords[m.outcome]}',
+        actorName: m.parentName,
+        cardId: m.cardId,
       );
     }
-    return accepted;
   }
 
   static Future<void> _afterMarks(Session session, int cardId) async {

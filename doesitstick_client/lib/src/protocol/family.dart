@@ -20,6 +20,7 @@ abstract class Family
     required this.childName,
     required this.inviteCode,
     this.shareToken,
+    this.syncSpace,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -28,6 +29,7 @@ abstract class Family
     required String childName,
     required String inviteCode,
     String? shareToken,
+    _isc.UuidValue? syncSpace,
     DateTime? createdAt,
   }) = _FamilyImpl;
 
@@ -37,6 +39,11 @@ abstract class Family
       childName: jsonSerialization['childName'] as String,
       inviteCode: jsonSerialization['inviteCode'] as String,
       shareToken: jsonSerialization['shareToken'] as String?,
+      syncSpace: jsonSerialization['syncSpace'] == null
+          ? null
+          : _isc.UuidValueJsonExtension.fromJson(
+              jsonSerialization['syncSpace'],
+            ),
       createdAt: jsonSerialization['createdAt'] == null
           ? null
           : _isc.DateTimeJsonExtension.fromJson(jsonSerialization['createdAt']),
@@ -55,6 +62,9 @@ abstract class Family
   /// Set only when a parent shares the weekly page; revocable.
   String? shareToken;
 
+  /// The offline sync space both parents' phones sync marks in.
+  _isc.UuidValue? syncSpace;
+
   DateTime createdAt;
 
   /// Returns a shallow copy of this [Family]
@@ -65,6 +75,7 @@ abstract class Family
     String? childName,
     String? inviteCode,
     String? shareToken,
+    _isc.UuidValue? syncSpace,
     DateTime? createdAt,
   });
   @override
@@ -75,6 +86,7 @@ abstract class Family
       'childName': childName,
       'inviteCode': inviteCode,
       if (shareToken != null) 'shareToken': shareToken,
+      if (syncSpace != null) 'syncSpace': syncSpace?.toJson(),
       'createdAt': createdAt.toJson(),
     };
   }
@@ -87,6 +99,7 @@ abstract class Family
       'childName': childName,
       'inviteCode': inviteCode,
       if (shareToken != null) 'shareToken': shareToken,
+      if (syncSpace != null) 'syncSpace': syncSpace?.toJson(),
       'createdAt': createdAt.toJson(),
     };
   }
@@ -105,12 +118,14 @@ class _FamilyImpl extends Family {
     required String childName,
     required String inviteCode,
     String? shareToken,
+    _isc.UuidValue? syncSpace,
     DateTime? createdAt,
   }) : super._(
          id: id,
          childName: childName,
          inviteCode: inviteCode,
          shareToken: shareToken,
+         syncSpace: syncSpace,
          createdAt: createdAt,
        );
 
@@ -123,6 +138,7 @@ class _FamilyImpl extends Family {
     String? childName,
     String? inviteCode,
     Object? shareToken = _Undefined,
+    Object? syncSpace = _Undefined,
     DateTime? createdAt,
   }) {
     return Family(
@@ -130,6 +146,7 @@ class _FamilyImpl extends Family {
       childName: childName ?? this.childName,
       inviteCode: inviteCode ?? this.inviteCode,
       shareToken: shareToken is String? ? shareToken : this.shareToken,
+      syncSpace: syncSpace is _isc.UuidValue? ? syncSpace : this.syncSpace,
       createdAt: createdAt ?? this.createdAt,
     );
   }

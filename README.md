@@ -58,25 +58,27 @@ Every Serverpod feature answers a parent need.
 | Check it stuck without me remembering | **Scheduled future calls** on day 2 and day 7. `Recheck` rows are the source of truth, and a recurring 15-minute sweep catches anything missed, so restarts and deploys lose nothing. |
 | My child's homework photo is private | **Private file storage** with upload descriptions; only family members can fetch it through an endpoint, a parent can delete it, and the sweep removes it after 7 days. |
 | No sign-up at the kitchen table | **Serverpod auth** with a one-tap anonymous identity provider; email sign-in is optional. |
-| Wi-Fi drops at home | An offline outbox on the phone and **idempotent** marks (`clientMarkId`); the latest mark wins. |
+| Wi-Fi drops at home | **Serverpod 4 offline sync** (`database: sync`): each phone keeps its family's marks in local SQLite (also in the browser, via `sqlite3.wasm`), writes offline, and syncs continuously into a shared **family space**; conflicts merge, latest mark wins. |
 | Setup must never get stuck | Idempotent `family.create` and `join`: retrying after a lost reply is safe. |
 | Keys stay secret | **Serverpod Cloud passwords** (`geminiApiKey`); never in the app or this repo. |
 | It has to be trustworthy | Tests with `serverpod_test` on an embedded Postgres, plus opt-in tests that send real worksheet photos to Gemini. |
 
 One Dart codebase: the Flutter app (Android and web) and the server share generated models.
 
-### Why not Serverpod 4's offline sync (yet)?
+### Offline sync, end to end
 
-We looked hard at `database: sync`; it fits the problem (a family would be a shared *space*). We kept
-a small outbox instead, for now:
+Marks are a `database: sync` model in a shared space per family (created with the family; the partner
+is granted on join). A small `familySync` endpoint wraps the module's sync with `onMergeSuccess`, so
+when a phone's marks land the server completes the card, schedules re-checks and tells the other
+parent. Verified with:
 
-- Most judges and many parents use the **web** app, and web support for the client database isn't
-  documented yet.
-- Every mark is **validated on the server** (it must belong to that family's question) and made
-  idempotent by `clientMarkId`; the sync module has no server-side write hook yet.
-- It's experimental (0.0.x) with recent API renames, and this app has to work on demo day.
+- `doesitstick_client/tool/two_parents_sync.dart`: two accounts, two local databases; a mark
+  reaches the other phone, offline marks sync later, conflicting edits converge, live sync in ~2 s.
+- `doesitstick_flutter/tool/web_sync_check.dart`: the same in Chrome (SQLite in WebAssembly).
+- A real Android phone: marked with no connection ("Saved on this phone"), synced 3 s after
+  reconnecting; the app also opens offline from its cached family.
 
-When offline sync is stable (planned for 4.1), the marks move to a family space.
+What we learned along the way is in [SERVERPOD_FEEDBACK.md](SERVERPOD_FEEDBACK.md).
 
 ## Try it as a judge (about a minute)
 
@@ -122,4 +124,4 @@ RUN_E2E=1 GEMINI_API_KEY=... dart test test/e2e    # real worksheet photos throu
 - `doesitstick_server/lib/src/math/` — question builder and independent checker
 - `doesitstick_server/lib/src/worksheets/` — photo upload, Gemini reader, background reading
 - `doesitstick_server/lib/src/rechecks/` — day-2 and day-7 re-checks
-- `doesitstick_flutter/lib/` — the app (screens, live state, offline outbox, design tokens)
+- `doesitstick_flutter/lib/` — the app (screens, live state, offline sync of marks, design tokens)

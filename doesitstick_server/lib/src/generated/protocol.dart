@@ -20,6 +20,8 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
+import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
+    as _izehhkf5;
 import 'card_kind.dart' as _i9emmw3b;
 import 'card_view.dart' as _iuaciou8;
 import 'concept_digest.dart' as _i85n5w8z;
@@ -76,6 +78,7 @@ export 'share_link.dart';
 export 'weekly_digest.dart';
 export 'worksheet.dart';
 export 'worksheet_status.dart';
+export 'sync_tables.dart';
 
 class Protocol extends _is.DatabaseSerializationManager {
   Protocol._();
@@ -115,6 +118,12 @@ class Protocol extends _is.DatabaseSerializationManager {
           columnType: _isp.ColumnType.text,
           isNullable: true,
           dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'syncSpace',
+          columnType: _isp.ColumnType.uuid,
+          isNullable: true,
+          dartType: 'UuidValue?',
         ),
         _isp.ColumnDefinition(
           name: 'createdAt',
@@ -231,10 +240,16 @@ class Protocol extends _is.DatabaseSerializationManager {
       columns: [
         _isp.ColumnDefinition(
           name: 'id',
-          columnType: _isp.ColumnType.bigint,
+          columnType: _isp.ColumnType.uuid,
           isNullable: false,
+          dartType: 'UuidValue?',
+          columnDefault: 'random_v7',
+        ),
+        _isp.ColumnDefinition(
+          name: 'spaceId',
+          columnType: _isp.ColumnType.bigint,
+          isNullable: true,
           dartType: 'int?',
-          columnDefault: 'serial',
         ),
         _isp.ColumnDefinition(
           name: 'questionId',
@@ -273,30 +288,17 @@ class Protocol extends _is.DatabaseSerializationManager {
           dartType: 'UuidValue?',
         ),
         _isp.ColumnDefinition(
-          name: 'clientMarkId',
-          columnType: _isp.ColumnType.text,
-          isNullable: false,
-          dartType: 'String',
-        ),
-        _isp.ColumnDefinition(
           name: 'markedAt',
           columnType: _isp.ColumnType.timestampWithoutTimeZone,
           isNullable: false,
           dartType: 'DateTime',
         ),
-        _isp.ColumnDefinition(
-          name: 'receivedAt',
-          columnType: _isp.ColumnType.timestampWithoutTimeZone,
-          isNullable: false,
-          dartType: 'DateTime',
-          columnDefault: 'now',
-        ),
       ],
       foreignKeys: [
         _isp.ForeignKeyDefinition(
           constraintName: 'mark_fk_0',
-          columns: ['questionId'],
-          referenceTable: 'question',
+          columns: ['spaceId'],
+          referenceTable: 'offline_sync_spaces',
           referenceTableSchema: 'public',
           referenceColumns: ['id'],
           onUpdate: _isp.ForeignKeyAction.noAction,
@@ -306,25 +308,25 @@ class Protocol extends _is.DatabaseSerializationManager {
       ],
       indexes: [
         _isp.IndexDefinition(
-          indexName: 'mark_client_idx',
-          tableSpace: null,
-          elements: [
-            _isp.IndexElementDefinition(
-              type: _isp.IndexElementDefinitionType.column,
-              definition: 'clientMarkId',
-            ),
-          ],
-          type: 'btree',
-          isUnique: true,
-          isPrimary: false,
-        ),
-        _isp.IndexDefinition(
           indexName: 'mark_question_idx',
           tableSpace: null,
           elements: [
             _isp.IndexElementDefinition(
               type: _isp.IndexElementDefinitionType.column,
               definition: 'questionId',
+            ),
+          ],
+          type: 'btree',
+          isUnique: false,
+          isPrimary: false,
+        ),
+        _isp.IndexDefinition(
+          indexName: 'mark_card_idx',
+          tableSpace: null,
+          elements: [
+            _isp.IndexElementDefinition(
+              type: _isp.IndexElementDefinitionType.column,
+              definition: 'cardId',
             ),
           ],
           type: 'btree',
@@ -725,6 +727,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       managed: true,
     ),
     ..._iais.Protocol.targetTableDefinitions,
+    ..._izehhkf5.Protocol.targetTableDefinitions,
     ..._iacs.Protocol.targetTableDefinitions,
     ..._isp.Protocol.targetTableDefinitions,
   ];
@@ -1010,6 +1013,9 @@ class Protocol extends _is.DatabaseSerializationManager {
       return _iais.Protocol().deserialize<T>(data, t);
     } on _is.DeserializationTypeNotFoundException catch (_) {}
     try {
+      return _izehhkf5.Protocol().deserialize<T>(data, t);
+    } on _is.DeserializationTypeNotFoundException catch (_) {}
+    try {
       return _iacs.Protocol().deserialize<T>(data, t);
     } on _is.DeserializationTypeNotFoundException catch (_) {}
     try {
@@ -1127,6 +1133,12 @@ class Protocol extends _is.DatabaseSerializationManager {
           ? className
           : 'serverpod_auth_idp.$className';
     }
+    className = _izehhkf5.Protocol().getClassNameForObject(data);
+    if (className != null) {
+      return className.contains('.')
+          ? className
+          : 'serverpod_offline_sync.$className';
+    }
     className = _iacs.Protocol().getClassNameForObject(data);
     if (className != null) {
       return className.contains('.')
@@ -1238,6 +1250,10 @@ class Protocol extends _is.DatabaseSerializationManager {
       data['className'] = dataClassName.substring(19);
       return _iais.Protocol().deserializeByClassName(data);
     }
+    if (dataClassName.startsWith('serverpod_offline_sync.')) {
+      data['className'] = dataClassName.substring(23);
+      return _izehhkf5.Protocol().deserializeByClassName(data);
+    }
     if (dataClassName.startsWith('serverpod_auth_core.')) {
       data['className'] = dataClassName.substring(20);
       return _iacs.Protocol().deserializeByClassName(data);
@@ -1251,6 +1267,7 @@ class Protocol extends _is.DatabaseSerializationManager {
 
   void _registerHostProtocols() {
     _iais.Protocol().registerHostProtocol('doesitstick', this);
+    _izehhkf5.Protocol().registerHostProtocol('doesitstick', this);
     _iacs.Protocol().registerHostProtocol('doesitstick', this);
   }
 
@@ -1258,6 +1275,12 @@ class Protocol extends _is.DatabaseSerializationManager {
   _is.Table? getTableForType(Type t) {
     {
       var table = _iais.Protocol().getTableForType(t);
+      if (table != null) {
+        return table;
+      }
+    }
+    {
+      var table = _izehhkf5.Protocol().getTableForType(t);
       if (table != null) {
         return table;
       }
@@ -1311,6 +1334,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     try {
       return _iais.Protocol().mapRecordToJson(record);
+    } catch (_) {}
+    try {
+      return _izehhkf5.Protocol().mapRecordToJson(record);
     } catch (_) {}
     try {
       return _iacs.Protocol().mapRecordToJson(record);

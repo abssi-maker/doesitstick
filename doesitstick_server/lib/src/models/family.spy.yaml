@@ -6,6 +6,8 @@ fields:
   inviteCode: String
   ### Set only when a parent shares the weekly page; revocable.
   shareToken: String?
+  ### The offline sync space both parents' phones sync marks in.
+  syncSpace: UuidValue?
   createdAt: DateTime, default=now
 indexes:
   family_invite_idx:

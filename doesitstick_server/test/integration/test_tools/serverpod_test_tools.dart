@@ -38,6 +38,8 @@ import 'package:doesitstick_server/src/generated/worksheet.dart' as _idm9nequ;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
+import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
+    as _izehhkf5;
 import 'package:serverpod_test/serverpod_test.dart' as _ist;
 import 'package:doesitstick_server/src/generated/protocol.dart';
 import 'package:doesitstick_server/src/generated/endpoints.dart';
@@ -61,6 +63,9 @@ export 'package:serverpod_test/serverpod_test_public_exports.dart';
 /// [applyMigrations] Whether pending migrations should be applied when starting Serverpod. Defaults to `true`
 ///
 /// [enableSessionLogging] Whether session logging should be enabled. Defaults to `false`
+///
+/// [ephemeralDatabase] Whether this group gets its own empty database, created when the group starts and dropped when it finishes. Defaults to `true`.
+/// Set this to `false` to use the database configured for [runMode], including a previously seeded database. [configOverride] can still replace that database. The configured database is not created or dropped, so groups that share it cannot run in parallel. [rollbackDatabase] still controls whether writes inside the group are rolled back.
 ///
 /// [rollbackDatabase] Options for when to rollback the database during the test lifecycle.
 /// By default `withServerpod` does all database operations inside a transaction that is rolled back after each `test` case.
@@ -131,6 +136,7 @@ void withServerpod(
   _is.ServerpodConfig Function(_is.ServerpodConfig)? configOverride,
   _is.DatabaseInterceptor? databaseInterceptor,
   bool? enableSessionLogging,
+  bool? ephemeralDatabase,
   _is.ExperimentalFeatures? experimentalFeatures,
   _ist.RollbackDatabase? rollbackDatabase,
   String? runMode,
@@ -149,6 +155,7 @@ void withServerpod(
       serializationManager: Protocol(),
       runMode: runMode,
       applyMigrations: applyMigrations,
+      ephemeralDatabase: ephemeralDatabase,
       isDatabaseEnabled: true,
       serverpodLoggingMode: serverpodLoggingMode,
       testServerOutputMode: testServerOutputMode,
@@ -179,6 +186,8 @@ class TestEndpoints {
 
   late final _WorksheetEndpoint worksheet;
 
+  late final _FamilySyncEndpoint familySync;
+
   late final _CardEndpoint card;
 
   late final _ProgressEndpoint progress;
@@ -208,6 +217,10 @@ class _InternalTestEndpoints extends TestEndpoints
       serializationManager,
     );
     worksheet = _WorksheetEndpoint(
+      endpoints,
+      serializationManager,
+    );
+    familySync = _FamilySyncEndpoint(
       endpoints,
       serializationManager,
     );
@@ -959,6 +972,51 @@ class _WorksheetEndpoint {
         await _localUniqueSession.close();
       }
     });
+  }
+}
+
+class _FamilySyncEndpoint {
+  _FamilySyncEndpoint(
+    this._endpointDispatch,
+    this._serializationManager,
+  );
+
+  final _is.EndpointDispatch _endpointDispatch;
+
+  final _is.SerializationManager _serializationManager;
+
+  _ida.Stream<_izehhkf5.OfflineSyncStreamEvent> sync(
+    _ist.TestSessionBuilder sessionBuilder, {
+    required _ida.Stream<_izehhkf5.OfflineSyncStreamEvent> changes,
+    required bool once,
+  }) {
+    var _localTestStreamManager =
+        _ist.TestStreamManager<_izehhkf5.OfflineSyncStreamEvent>();
+    _ist.callStreamFunctionAndHandleExceptions(
+      () async {
+        var _localUniqueSession =
+            (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+              endpoint: 'familySync',
+              method: 'sync',
+            );
+        var _localCallContext = await _endpointDispatch
+            .getMethodStreamCallContext(
+              createSessionCallback: (_) => _localUniqueSession,
+              endpointPath: 'familySync',
+              methodName: 'sync',
+              arguments: {'once': once},
+              requestedInputStreams: ['changes'],
+              serializationManager: _serializationManager,
+            );
+        await _localTestStreamManager.callStreamMethod(
+          _localCallContext,
+          _localUniqueSession,
+          {'changes': changes},
+        );
+      },
+      _localTestStreamManager.outputStreamController,
+    );
+    return _localTestStreamManager.outputStreamController.stream;
   }
 }
 

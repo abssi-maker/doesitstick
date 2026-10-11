@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:serverpod/serverpod.dart';
+import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart';
 
 import 'cards/card_service.dart';
 import 'digest/digest_service.dart';
@@ -263,6 +264,30 @@ class WorksheetEndpoint extends Endpoint {
       id = ws.id!;
     }
     return WorksheetService.chooseTopic(session, member, id, conceptId);
+  }
+}
+
+/// Serverpod offline sync for the family's marks: the module's CRDT sync,
+/// plus a hook for when a phone's marks land on the server (complete cards,
+/// schedule re-checks, tell the other parent).
+class FamilySyncEndpoint extends Endpoint {
+  @override
+  bool get requireLogin => true;
+
+  Stream<OfflineSyncStreamEvent> sync(
+    Session session, {
+    required Stream<OfflineSyncStreamEvent> changes,
+    bool once = false,
+  }) async* {
+    final member = await FamilyService.requireMember(session);
+    await FamilyService.ensureSpace(session, member.familyId);
+    yield* session.offlineSync.sync(
+      userId: UuidValue.withValidation(session.authenticated!.userIdentifier),
+      inbound: changes,
+      once: once,
+      mode: OfflineSyncPeerMode.authoritative,
+      onMergeSuccess: (_, _) => CardService.afterSync(session, member),
+    );
   }
 }
 

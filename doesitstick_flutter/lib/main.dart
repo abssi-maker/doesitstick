@@ -1,6 +1,10 @@
+import 'dart:convert';
+
 import 'package:doesitstick_client/doesitstick_client.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'client.dart';
 import 'screens/home_shell.dart';
@@ -51,9 +55,34 @@ class FamilyGate extends StatefulWidget {
 }
 
 class _FamilyGateState extends State<FamilyGate> {
-  late Future<FamilyView?> _me = client.family.me();
+  late Future<FamilyView?> _me = _loadFamily();
 
-  void _reload() => setState(() => _me = client.family.me());
+  // A block body on purpose: setState must not return the Future.
+  void _reload() {
+    setState(() {
+      _me = _loadFamily();
+    });
+  }
+
+  /// The family from the server, remembered per account so the app still
+  /// opens offline (offline sync saves marks until the connection is back).
+  Future<FamilyView?> _loadFamily() async {
+    final prefs = await SharedPreferences.getInstance();
+    final key = 'dis.family.v1.${client.auth.authInfo?.authUserId}';
+    try {
+      final family = await client.family.me();
+      if (family == null) {
+        await prefs.remove(key);
+      } else {
+        await prefs.setString(key, jsonEncode(family.toJson()));
+      }
+      return family;
+    } catch (_) {
+      final cached = prefs.getString(key);
+      if (cached == null) rethrow;
+      return FamilyView.fromJson(jsonDecode(cached) as Map<String, dynamic>);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

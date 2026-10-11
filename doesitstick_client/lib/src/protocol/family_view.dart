@@ -22,6 +22,7 @@ abstract class FamilyView
     required this.me,
     required this.parents,
     this.shareUrl,
+    this.syncSpace,
   });
 
   factory FamilyView({
@@ -31,6 +32,7 @@ abstract class FamilyView
     required String me,
     required List<String> parents,
     String? shareUrl,
+    _isc.UuidValue? syncSpace,
   }) = _FamilyViewImpl;
 
   factory FamilyView.fromJson(Map<String, dynamic> jsonSerialization) {
@@ -43,6 +45,11 @@ abstract class FamilyView
         jsonSerialization['parents'],
       ),
       shareUrl: jsonSerialization['shareUrl'] as String?,
+      syncSpace: jsonSerialization['syncSpace'] == null
+          ? null
+          : _isc.UuidValueJsonExtension.fromJson(
+              jsonSerialization['syncSpace'],
+            ),
     );
   }
 
@@ -58,6 +65,9 @@ abstract class FamilyView
 
   String? shareUrl;
 
+  /// The offline sync space this family's marks live in.
+  _isc.UuidValue? syncSpace;
+
   /// Returns a shallow copy of this [FamilyView]
   /// with some or all fields replaced by the given arguments.
   @_isc.useResult
@@ -68,6 +78,7 @@ abstract class FamilyView
     String? me,
     List<String>? parents,
     String? shareUrl,
+    _isc.UuidValue? syncSpace,
   });
   @override
   Map<String, dynamic> toJson() {
@@ -79,6 +90,7 @@ abstract class FamilyView
       'me': me,
       'parents': parents.toJson(),
       if (shareUrl != null) 'shareUrl': shareUrl,
+      if (syncSpace != null) 'syncSpace': syncSpace?.toJson(),
     };
   }
 
@@ -92,6 +104,7 @@ abstract class FamilyView
       'me': me,
       'parents': parents.toJson(),
       if (shareUrl != null) 'shareUrl': shareUrl,
+      if (syncSpace != null) 'syncSpace': syncSpace?.toJson(),
     };
   }
 
@@ -111,6 +124,7 @@ class _FamilyViewImpl extends FamilyView {
     required String me,
     required List<String> parents,
     String? shareUrl,
+    _isc.UuidValue? syncSpace,
   }) : super._(
          familyId: familyId,
          childName: childName,
@@ -118,6 +132,7 @@ class _FamilyViewImpl extends FamilyView {
          me: me,
          parents: parents,
          shareUrl: shareUrl,
+         syncSpace: syncSpace,
        );
 
   /// Returns a shallow copy of this [FamilyView]
@@ -131,6 +146,7 @@ class _FamilyViewImpl extends FamilyView {
     String? me,
     List<String>? parents,
     Object? shareUrl = _Undefined,
+    Object? syncSpace = _Undefined,
   }) {
     return FamilyView(
       familyId: familyId ?? this.familyId,
@@ -139,6 +155,7 @@ class _FamilyViewImpl extends FamilyView {
       me: me ?? this.me,
       parents: parents ?? this.parents.map((e0) => e0).toList(),
       shareUrl: shareUrl is String? ? shareUrl : this.shareUrl,
+      syncSpace: syncSpace is _isc.UuidValue? ? syncSpace : this.syncSpace,
     );
   }
 }
