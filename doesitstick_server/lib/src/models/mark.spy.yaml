@@ -1,19 +1,19 @@
-### A parent's observation. clientMarkId makes offline re-sends idempotent.
+### A parent's observation. Synced with Serverpod offline sync inside the
+### family's space: a phone writes it locally, offline if need be, and the
+### UUID id (made on the phone) keeps re-sends idempotent.
 class: Mark
 table: mark
+database: sync
 fields:
-  questionId: int, relation(parent=question, onDelete=Cascade)
+  questionId: int
   cardId: int
   familyId: int
   outcome: Outcome
   parentName: String
-  authUserId: UuidValue?, scope=serverOnly
-  clientMarkId: String
+  authUserId: UuidValue?
   markedAt: DateTime
-  receivedAt: DateTime, default=now
 indexes:
-  mark_client_idx:
-    fields: clientMarkId
-    unique: true
   mark_question_idx:
     fields: questionId
+  mark_card_idx:
+    fields: cardId

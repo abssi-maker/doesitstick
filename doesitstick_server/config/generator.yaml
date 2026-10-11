@@ -2,3 +2,12 @@ type: server
 
 client_package_path: ../doesitstick_client
 server_test_tools_path: test/integration/test_tools
+
+# Serverpod 4 offline sync (experimental): marks live in a shared space per
+# family, so both parents' phones read and write them offline.
+modules:
+  serverpod_offline_sync:
+    nickname: offline_sync
+
+experimental_features:
+  databaseSync: true

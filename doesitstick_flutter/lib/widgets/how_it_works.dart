@@ -39,8 +39,8 @@ const _steps = [
   (
     '📶',
     'Bad Wi-Fi is fine',
-    'Marks are saved on the phone and sent when you’re back online. The '
-        'server ignores duplicates, so nothing is counted twice.',
+    'Serverpod offline sync keeps the family’s marks on each phone. Mark '
+        'with no connection; it syncs when you’re back, and both phones agree.',
   ),
   (
     '🔐',

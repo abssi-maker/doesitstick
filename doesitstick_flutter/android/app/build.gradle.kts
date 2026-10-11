@@ -17,6 +17,13 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.example.doesitstick_flutter"
+        // Side-by-side test installs that leave the real app and its sign-in
+        // alone: flutter build apk --android-project-arg=idSuffix=.synctest
+        manifestPlaceholders["appLabel"] = "Did It Stick"
+        (project.findProperty("idSuffix") as String?)?.let {
+            applicationIdSuffix = it
+            manifestPlaceholders["appLabel"] = "Did It Stick (test)"
+        }
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

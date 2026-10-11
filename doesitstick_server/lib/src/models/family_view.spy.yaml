@@ -6,3 +6,5 @@ fields:
   me: String
   parents: List<String>
   shareUrl: String?
+  ### The offline sync space this family's marks live in.
+  syncSpace: UuidValue?

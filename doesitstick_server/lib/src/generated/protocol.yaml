@@ -24,6 +24,8 @@ worksheet:
   - photo:
   - deletePhoto:
   - chooseTopic:
+familySync:
+  - sync:
 card:
   - card:
   - syncMarks:

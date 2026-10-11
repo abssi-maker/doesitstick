@@ -13,37 +13,41 @@
 import 'package:serverpod/serverpod.dart' as _is;
 import 'outcome.dart' as _i76t1xe4;
 
-/// A parent's observation. clientMarkId makes offline re-sends idempotent.
-abstract class Mark implements _is.TableRow<int?>, _is.ProtocolSerialization {
+/// A parent's observation. Synced with Serverpod offline sync inside the
+/// family's space: a phone writes it locally, offline if need be, and the
+/// UUID id (made on the phone) keeps re-sends idempotent.
+abstract class Mark
+    implements _is.TableRow<_is.UuidValue?>, _is.ProtocolSerialization {
   Mark._({
     this.id,
+    this.spaceId,
     required this.questionId,
     required this.cardId,
     required this.familyId,
     required this.outcome,
     required this.parentName,
     this.authUserId,
-    required this.clientMarkId,
     required this.markedAt,
-    DateTime? receivedAt,
-  }) : receivedAt = receivedAt ?? DateTime.now();
+  });
 
   factory Mark({
-    int? id,
+    _is.UuidValue? id,
+    int? spaceId,
     required int questionId,
     required int cardId,
     required int familyId,
     required _i76t1xe4.Outcome outcome,
     required String parentName,
     _is.UuidValue? authUserId,
-    required String clientMarkId,
     required DateTime markedAt,
-    DateTime? receivedAt,
   }) = _MarkImpl;
 
   factory Mark.fromJson(Map<String, dynamic> jsonSerialization) {
     return Mark(
-      id: jsonSerialization['id'] as int?,
+      id: jsonSerialization['id'] == null
+          ? null
+          : _is.UuidValueJsonExtension.fromJson(jsonSerialization['id']),
+      spaceId: jsonSerialization['spaceId'] as int?,
       questionId: jsonSerialization['questionId'] as int,
       cardId: jsonSerialization['cardId'] as int,
       familyId: jsonSerialization['familyId'] as int,
@@ -56,13 +60,9 @@ abstract class Mark implements _is.TableRow<int?>, _is.ProtocolSerialization {
           : _is.UuidValueJsonExtension.fromJson(
               jsonSerialization['authUserId'],
             ),
-      clientMarkId: jsonSerialization['clientMarkId'] as String,
       markedAt: _is.DateTimeJsonExtension.fromJson(
         jsonSerialization['markedAt'],
       ),
-      receivedAt: jsonSerialization['receivedAt'] == null
-          ? null
-          : _is.DateTimeJsonExtension.fromJson(jsonSerialization['receivedAt']),
     );
   }
 
@@ -71,7 +71,10 @@ abstract class Mark implements _is.TableRow<int?>, _is.ProtocolSerialization {
   static const db = MarkRepository._();
 
   @override
-  int? id;
+  _is.UuidValue? id;
+
+  /// The space owning this row. Maintained by the sync engine.
+  int? spaceId;
 
   int questionId;
 
@@ -85,44 +88,38 @@ abstract class Mark implements _is.TableRow<int?>, _is.ProtocolSerialization {
 
   _is.UuidValue? authUserId;
 
-  String clientMarkId;
-
   DateTime markedAt;
 
-  DateTime receivedAt;
-
   @override
-  _is.Table<int?> get table => t;
+  _is.Table<_is.UuidValue?> get table => t;
 
   /// Returns a shallow copy of this [Mark]
   /// with some or all fields replaced by the given arguments.
   @_is.useResult
   Mark copyWith({
-    int? id,
+    _is.UuidValue? id,
+    int? spaceId,
     int? questionId,
     int? cardId,
     int? familyId,
     _i76t1xe4.Outcome? outcome,
     String? parentName,
     _is.UuidValue? authUserId,
-    String? clientMarkId,
     DateTime? markedAt,
-    DateTime? receivedAt,
   });
   @override
   Map<String, dynamic> toJson() {
     return {
       '__className__': 'Mark',
-      if (id != null) 'id': id,
+      if (id != null) 'id': id?.toJson(),
+      if (spaceId != null) 'spaceId': spaceId,
       'questionId': questionId,
       'cardId': cardId,
       'familyId': familyId,
       'outcome': outcome.toJson(),
       'parentName': parentName,
       if (authUserId != null) 'authUserId': authUserId?.toJson(),
-      'clientMarkId': clientMarkId,
       'markedAt': markedAt.toJson(),
-      'receivedAt': receivedAt.toJson(),
     };
   }
 
@@ -130,15 +127,15 @@ abstract class Mark implements _is.TableRow<int?>, _is.ProtocolSerialization {
   Map<String, dynamic> toJsonForProtocol() {
     return {
       '__className__': 'Mark',
-      if (id != null) 'id': id,
+      if (id != null) 'id': id?.toJson(),
+      if (spaceId != null) 'spaceId': spaceId,
       'questionId': questionId,
       'cardId': cardId,
       'familyId': familyId,
       'outcome': outcome.toJson(),
       'parentName': parentName,
-      'clientMarkId': clientMarkId,
+      if (authUserId != null) 'authUserId': authUserId?.toJson(),
       'markedAt': markedAt.toJson(),
-      'receivedAt': receivedAt.toJson(),
     };
   }
 
@@ -174,27 +171,25 @@ class _Undefined {}
 
 class _MarkImpl extends Mark {
   _MarkImpl({
-    int? id,
+    _is.UuidValue? id,
+    int? spaceId,
     required int questionId,
     required int cardId,
     required int familyId,
     required _i76t1xe4.Outcome outcome,
     required String parentName,
     _is.UuidValue? authUserId,
-    required String clientMarkId,
     required DateTime markedAt,
-    DateTime? receivedAt,
   }) : super._(
          id: id,
+         spaceId: spaceId,
          questionId: questionId,
          cardId: cardId,
          familyId: familyId,
          outcome: outcome,
          parentName: parentName,
          authUserId: authUserId,
-         clientMarkId: clientMarkId,
          markedAt: markedAt,
-         receivedAt: receivedAt,
        );
 
   /// Returns a shallow copy of this [Mark]
@@ -203,33 +198,36 @@ class _MarkImpl extends Mark {
   @override
   Mark copyWith({
     Object? id = _Undefined,
+    Object? spaceId = _Undefined,
     int? questionId,
     int? cardId,
     int? familyId,
     _i76t1xe4.Outcome? outcome,
     String? parentName,
     Object? authUserId = _Undefined,
-    String? clientMarkId,
     DateTime? markedAt,
-    DateTime? receivedAt,
   }) {
     return Mark(
-      id: id is int? ? id : this.id,
+      id: id is _is.UuidValue? ? id : this.id,
+      spaceId: spaceId is int? ? spaceId : this.spaceId,
       questionId: questionId ?? this.questionId,
       cardId: cardId ?? this.cardId,
       familyId: familyId ?? this.familyId,
       outcome: outcome ?? this.outcome,
       parentName: parentName ?? this.parentName,
       authUserId: authUserId is _is.UuidValue? ? authUserId : this.authUserId,
-      clientMarkId: clientMarkId ?? this.clientMarkId,
       markedAt: markedAt ?? this.markedAt,
-      receivedAt: receivedAt ?? this.receivedAt,
     );
   }
 }
 
 class MarkUpdateTable extends _is.UpdateTable<MarkTable> {
   MarkUpdateTable(super.table);
+
+  _is.ColumnValue<int, int> spaceId(int? value) => _is.ColumnValue(
+    table.spaceId,
+    value,
+  );
 
   _is.ColumnValue<int, int> questionId(int value) => _is.ColumnValue(
     table.questionId,
@@ -265,27 +263,20 @@ class MarkUpdateTable extends _is.UpdateTable<MarkTable> {
     value,
   );
 
-  _is.ColumnValue<String, String> clientMarkId(String value) => _is.ColumnValue(
-    table.clientMarkId,
-    value,
-  );
-
   _is.ColumnValue<DateTime, DateTime> markedAt(DateTime value) =>
       _is.ColumnValue(
         table.markedAt,
         value,
       );
-
-  _is.ColumnValue<DateTime, DateTime> receivedAt(DateTime value) =>
-      _is.ColumnValue(
-        table.receivedAt,
-        value,
-      );
 }
 
-class MarkTable extends _is.Table<int?> {
+class MarkTable extends _is.Table<_is.UuidValue?> {
   MarkTable({super.tableRelation}) : super(tableName: 'mark') {
     updateTable = MarkUpdateTable(this);
+    spaceId = _is.ColumnInt(
+      'spaceId',
+      this,
+    );
     questionId = _is.ColumnInt(
       'questionId',
       this,
@@ -311,22 +302,16 @@ class MarkTable extends _is.Table<int?> {
       'authUserId',
       this,
     );
-    clientMarkId = _is.ColumnString(
-      'clientMarkId',
-      this,
-    );
     markedAt = _is.ColumnDateTime(
       'markedAt',
       this,
     );
-    receivedAt = _is.ColumnDateTime(
-      'receivedAt',
-      this,
-      hasDefault: true,
-    );
   }
 
   late final MarkUpdateTable updateTable;
+
+  /// The space owning this row. Maintained by the sync engine.
+  late final _is.ColumnInt spaceId;
 
   late final _is.ColumnInt questionId;
 
@@ -340,24 +325,19 @@ class MarkTable extends _is.Table<int?> {
 
   late final _is.ColumnUuid authUserId;
 
-  late final _is.ColumnString clientMarkId;
-
   late final _is.ColumnDateTime markedAt;
-
-  late final _is.ColumnDateTime receivedAt;
 
   @override
   List<_is.Column> get columns => [
     id,
+    spaceId,
     questionId,
     cardId,
     familyId,
     outcome,
     parentName,
     authUserId,
-    clientMarkId,
     markedAt,
-    receivedAt,
   ];
 }
 
@@ -368,7 +348,7 @@ class MarkInclude extends _is.IncludeObject {
   Map<String, _is.Include?> get includes => {};
 
   @override
-  _is.Table<int?> get table => Mark.t;
+  _is.Table<_is.UuidValue?> get table => Mark.t;
 }
 
 class MarkIncludeList extends _is.IncludeList {
@@ -387,7 +367,7 @@ class MarkIncludeList extends _is.IncludeList {
   Map<String, _is.Include?> get includes => include?.includes ?? {};
 
   @override
-  _is.Table<int?> get table => Mark.t;
+  _is.Table<_is.UuidValue?> get table => Mark.t;
 }
 
 class MarkRepository {
@@ -479,7 +459,7 @@ class MarkRepository {
   /// Finds a single [Mark] by its [id] or null if no such row exists.
   Future<Mark?> findById(
     _is.DatabaseSession session,
-    int id, {
+    _is.UuidValue id, {
     _is.Transaction? transaction,
     _is.LockMode? lockMode,
     _is.LockBehavior? lockBehavior,
@@ -648,7 +628,7 @@ class MarkRepository {
   /// Returns the updated row or null if no row with the given id exists.
   Future<Mark?> updateById(
     _is.DatabaseSession session,
-    int id, {
+    _is.UuidValue id, {
     required _is.ColumnValueListBuilder<MarkUpdateTable> columnValues,
     _is.Transaction? transaction,
   }) async {

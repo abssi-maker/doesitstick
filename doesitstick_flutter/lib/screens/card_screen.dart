@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:doesitstick_client/doesitstick_client.dart';
 import 'package:flutter/material.dart';
 
@@ -34,27 +32,10 @@ class CardScreen extends StatefulWidget {
 }
 
 class _CardScreenState extends State<CardScreen> {
-  final _watch = Stopwatch()..start();
-  Timer? _tick;
-
   /// One problem on screen at a time; [_finished] shows the summary.
   int _step = 0;
   bool _finished = false;
   bool _placed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted) setState(() {});
-    });
-  }
-
-  @override
-  void dispose() {
-    _tick?.cancel();
-    super.dispose();
-  }
 
   Widget _donePanel(
     BuildContext context,
@@ -87,9 +68,6 @@ class _CardScreenState extends State<CardScreen> {
     );
   }
 
-  String _mmss(Duration d) =>
-      '${d.inMinutes}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
-
   @override
   Widget build(BuildContext context) {
     final c = FamilyScope.of(context);
@@ -102,7 +80,6 @@ class _CardScreenState extends State<CardScreen> {
         .where((q) => c.effectiveMark(q) != null)
         .length;
     final done = marked == card.questions.length;
-    if (done && _watch.isRunning) _watch.stop();
     final isRecheck = card.card.kind == CardKind.recheck;
     final next = c.home!.rechecks
         .where(
@@ -139,18 +116,6 @@ class _CardScreenState extends State<CardScreen> {
               : 'Work through it together',
           style: t.titleMedium,
         ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 14),
-            child: Pill(
-              done
-                  ? 'Done in ${_mmss(_watch.elapsed)}'
-                  : '⏱ ${_mmss(_watch.elapsed)}',
-              bg: done ? C.mintS : C.grapeS,
-              fg: done ? C.mintT : C.grapeT,
-            ),
-          ),
-        ],
       ),
       body: Center(
         child: ConstrainedBox(
@@ -221,7 +186,6 @@ class _CardScreenState extends State<CardScreen> {
                   key: ValueKey(card.questions[_step].question.id),
                   index: _step,
                   view: card.questions[_step],
-                  methodName: card.methodName,
                   isRecheck: isRecheck,
                 ),
                 const SizedBox(height: 14),
@@ -276,13 +240,11 @@ class _CardScreenState extends State<CardScreen> {
 class _QuestionTile extends StatefulWidget {
   final int index;
   final QuestionView view;
-  final String methodName;
   final bool isRecheck;
   const _QuestionTile({
     super.key,
     required this.index,
     required this.view,
-    required this.methodName,
     required this.isRecheck,
   });
 
@@ -330,10 +292,9 @@ class _QuestionTileState extends State<_QuestionTile> {
                 ),
               ),
               const SizedBox(width: 10),
-              Flexible(
+              Expanded(
                 child: Text(_styleLabel[q.style]!, style: t.titleMedium),
               ),
-              const Spacer(),
               if (q.fromWorksheet)
                 const Pill('📄 From the worksheet', bg: C.skyS, fg: C.skyT)
               else if (!widget.isRecheck)
@@ -430,7 +391,7 @@ class _QuestionTileState extends State<_QuestionTile> {
           ),
           if (mark != null) ...[
             const SizedBox(height: 10),
-            _Praise(outcome: mark.outcome, methodName: widget.methodName),
+            _Praise(outcome: mark.outcome),
             const SizedBox(height: 8),
             Text(
               _syncWords(c, mark),
@@ -527,16 +488,14 @@ class _SummaryRow extends StatelessWidget {
 /// than the child, so even "not yet" ends warmly.
 class _Praise extends StatelessWidget {
   final Outcome outcome;
-  final String methodName;
-  const _Praise({required this.outcome, required this.methodName});
+  const _Praise({required this.outcome});
 
   @override
   Widget build(BuildContext context) {
     final t = Theme.of(context).textTheme;
-    final method = methodName.split(' (').first.toLowerCase();
     final words = switch (outcome) {
       Outcome.explainedWhy =>
-        'You explained exactly how $method works. That’s real understanding.',
+        'You explained exactly why it works. That’s real understanding.',
       Outcome.gotAnswer => 'I like how you worked that out step by step.',
       Outcome.withHint => 'You stuck with it. That’s how you get better.',
       Outcome.notYet => 'Not yet is fine. We’ll try it again another day.',

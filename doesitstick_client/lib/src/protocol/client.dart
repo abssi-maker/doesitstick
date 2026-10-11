@@ -32,7 +32,12 @@ import 'package:serverpod_auth_core_client/serverpod_auth_core_client.dart'
 import 'package:serverpod_auth_idp_client/serverpod_auth_idp_client.dart'
     as _iaic;
 import 'package:serverpod_client/serverpod_client.dart' as _isc;
+import 'package:serverpod_database/serverpod_database.dart' as _isd;
+import 'package:serverpod_offline_sync_client/serverpod_offline_sync_client.dart'
+    as _ipulbpi2;
 import 'protocol.dart' as _il2as5qe;
+import 'sync_tables.dart' as _ii3f3u05;
+import 'package:doesitstick_client/migrations/migration_registry.dart';
 
 /// One-tap sign-in: each phone gets its own account without an email, so a
 /// parent (or a judge) lands straight in the app. Email stays available.
@@ -401,6 +406,31 @@ class EndpointWorksheet extends _isc.EndpointRef {
   );
 }
 
+/// Serverpod offline sync for the family's marks: the module's CRDT sync,
+/// plus a hook for when a phone's marks land on the server (complete cards,
+/// schedule re-checks, tell the other parent).
+/// {@category Endpoint}
+class EndpointFamilySync extends _isc.EndpointRef {
+  EndpointFamilySync(_isc.EndpointCaller caller) : super(caller);
+
+  @override
+  String get name => 'familySync';
+
+  _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent> sync({
+    required _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent> changes,
+    required bool once,
+  }) =>
+      caller.callStreamingServerEndpoint<
+        _ida.Stream<_ipulbpi2.OfflineSyncStreamEvent>,
+        _ipulbpi2.OfflineSyncStreamEvent
+      >(
+        'familySync',
+        'sync',
+        {'once': once},
+        {'changes': changes},
+      );
+}
+
 /// Cards and marks.
 /// {@category Endpoint}
 class EndpointCard extends _isc.EndpointRef {
@@ -466,10 +496,13 @@ class EndpointProgress extends _isc.EndpointRef {
 class Modules {
   Modules(Client client) {
     serverpod_auth_idp = _iaic.Caller(client);
+    offline_sync = _ipulbpi2.Caller(client);
     serverpod_auth_core = _iacc.Caller(client);
   }
 
   late final _iaic.Caller serverpod_auth_idp;
+
+  late final _ipulbpi2.Caller offline_sync;
 
   late final _iacc.Caller serverpod_auth_core;
 }
@@ -506,6 +539,7 @@ class Client extends _isc.ServerpodClientShared {
     jwtRefresh = EndpointJwtRefresh(this);
     family = EndpointFamily(this);
     worksheet = EndpointWorksheet(this);
+    familySync = EndpointFamilySync(this);
     card = EndpointCard(this);
     progress = EndpointProgress(this);
     modules = Modules(this);
@@ -521,6 +555,8 @@ class Client extends _isc.ServerpodClientShared {
 
   late final EndpointWorksheet worksheet;
 
+  late final EndpointFamilySync familySync;
+
   late final EndpointCard card;
 
   late final EndpointProgress progress;
@@ -534,6 +570,7 @@ class Client extends _isc.ServerpodClientShared {
     'jwtRefresh': jwtRefresh,
     'family': family,
     'worksheet': worksheet,
+    'familySync': familySync,
     'card': card,
     'progress': progress,
   };
@@ -541,6 +578,60 @@ class Client extends _isc.ServerpodClientShared {
   @override
   Map<String, _isc.ModuleEndpointCaller> get moduleLookup => {
     'serverpod_auth_idp': modules.serverpod_auth_idp,
+    'offline_sync': modules.offline_sync,
     'serverpod_auth_core': modules.serverpod_auth_core,
   };
+
+  /// Creates a new client-side database session for the given path.
+  ///
+  /// The [path] is the file path to the SQLite database file. Since SQLite uses
+  /// WAL mode, note that `[path]-shm` and `[path]-wal` files might also exist
+  /// transiently for the database while the session is open.
+  ///
+  /// If [runMigrations] is true, pending migrations will be applied when
+  /// opening the database. Be careful when setting this to false, as it might
+  /// lead to inconsistencies between the models and the database.
+  ///
+  /// If [isDebugMode] is true, the database integrity will be verified after
+  /// the migrations are applied to provide feedback of possible issues. On a
+  /// Flutter application, this should be set to [kDebugMode].
+  _ida.Future<_isd.ClientDatabaseSession> createSession(
+    String path, {
+    bool runMigrations = true,
+    bool isDebugMode = false,
+  }) async {
+    return await _isd.ClientDatabaseSession.open(
+      path,
+      _il2as5qe.Protocol(),
+      clientMigrations: MigrationRegistry.migrations,
+      runMigrations: runMigrations,
+      isDebugMode: isDebugMode,
+    );
+  }
+
+  /// Creates a new client-side database session for the given path, wrapped
+  /// with the `serverpod_offline_sync` engine for the tables declared with
+  /// `database: sync`. See [createSession] for the [path], [runMigrations] and
+  /// [isDebugMode] parameters.
+  ///
+  /// The [persistentUserId] is the user all local operations belong to. When
+  /// omitted, the user must be passed through the transaction.
+  _ida.Future<_ipulbpi2.OfflineSyncDatabaseSession> createSyncSession(
+    String path, {
+    bool runMigrations = true,
+    bool isDebugMode = false,
+    _isc.UuidValue? persistentUserId,
+  }) async {
+    final session = _ipulbpi2.OfflineSyncDatabaseSession.wraps(
+      await createSession(
+        path,
+        runMigrations: runMigrations,
+        isDebugMode: isDebugMode,
+      ),
+      syncTables: _ii3f3u05.syncTables,
+      persistentUserId: persistentUserId,
+    );
+    await session.db.initialize();
+    return session;
+  }
 }

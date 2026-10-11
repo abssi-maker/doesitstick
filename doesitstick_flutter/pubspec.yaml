@@ -32,11 +32,13 @@ dependencies:
   google_fonts: ^8.1.0
   doesitstick_client:
     path: ../doesitstick_client
-  serverpod_flutter: 4.0.0
-  serverpod_auth_idp_flutter: 4.0.0
+  serverpod_flutter: 4.0.4
+  serverpod_auth_idp_flutter: 4.0.4
   image_picker: ^1.2.4
   shared_preferences: ^2.5.6
   share_plus: ^13.3.1
+  serverpod_offline_sync_client: 0.0.10
+  path_provider: ^2.1.6
 
 dev_dependencies:
   # Used for agents to drive the app through the Dart MCP

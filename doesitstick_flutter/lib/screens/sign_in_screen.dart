@@ -245,25 +245,28 @@ class _FeatureGrid extends StatelessWidget {
         ],
       ),
     );
+    // Natural heights (no IntrinsicHeight: it under-measures wrapped text),
+    // with a shared minimum so two-column rows still line up.
     final rows = <Widget>[];
     for (var i = 0; i < _features.length; i += columns) {
       rows.add(
         Padding(
           padding: const EdgeInsets.only(bottom: 12),
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                for (
-                  var j = i;
-                  j < i + columns && j < _features.length;
-                  j++
-                ) ...[
-                  if (j > i) const SizedBox(width: 12),
-                  Expanded(child: tile(_features[j])),
-                ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var j = i; j < i + columns && j < _features.length; j++) ...[
+                if (j > i) const SizedBox(width: 12),
+                Expanded(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: columns > 1 ? 112 : 0,
+                    ),
+                    child: tile(_features[j]),
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         ),
       );

@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:serverpod/serverpod.dart';
 import 'package:serverpod_auth_idp_server/core.dart';
+import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart';
 
 import '../generated/protocol.dart';
 
@@ -107,6 +108,12 @@ class FamilyService {
         displayName: parent,
       ),
     );
+    final space = await ensureSpace(session, family.id!);
+    await session.offlineSync.spaces.grant(
+      space: space,
+      user: auth.authUserId,
+      role: OfflineSyncSpaceRole.readWrite,
+    );
     await postEvent(
       session,
       family.id!,
@@ -117,11 +124,34 @@ class FamilyService {
     return member;
   }
 
+  /// The family's offline sync space: both parents' phones read and write
+  /// marks in it. Created on first use, so families made before offline sync
+  /// get one too, with every parent granted read-write.
+  static Future<UuidValue> ensureSpace(Session session, int familyId) async {
+    final family = (await Family.db.findById(session, familyId))!;
+    final existing = family.syncSpace;
+    if (existing != null) return existing;
+    final parents = await FamilyMember.db.find(
+      session,
+      where: (t) => t.familyId.equals(familyId),
+    );
+    final space = await session.offlineSync.spaces.create(
+      grants: {
+        for (final p in parents)
+          if (p.authUserId != null)
+            p.authUserId!: OfflineSyncSpaceRole.readWrite,
+      },
+    );
+    await Family.db.updateRow(session, family.copyWith(syncSpace: space));
+    return space;
+  }
+
   static Future<FamilyView> view(
     Session session,
     FamilyMember member, {
     String? shareBaseUrl,
   }) async {
+    final space = await ensureSpace(session, member.familyId);
     final family = await Family.db.findById(session, member.familyId);
     final parents = await FamilyMember.db.find(
       session,
@@ -135,6 +165,7 @@ class FamilyService {
       inviteCode: family.inviteCode,
       me: member.displayName,
       parents: parents.map((p) => p.displayName).toList(),
+      syncSpace: space,
       shareUrl: token == null || shareBaseUrl == null
           ? null
           : '$shareBaseUrl/s/$token',

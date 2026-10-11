@@ -19,6 +19,8 @@ import 'package:serverpod_auth_core_server/serverpod_auth_core_server.dart'
     as _iacs;
 import 'package:serverpod_auth_idp_server/serverpod_auth_idp_server.dart'
     as _iais;
+import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart'
+    as _izehhkf5;
 import '../auth/anonymous_idp_endpoint.dart' as _in0zita6;
 import '../auth/email_idp_endpoint.dart' as _iuc1hd5t;
 import '../auth/jwt_refresh_endpoint.dart' as _inwq3ztq;
@@ -57,6 +59,12 @@ class Endpoints extends _is.EndpointDispatch {
         ..initialize(
           server,
           'worksheet',
+          null,
+        ),
+      'familySync': _iwwls8qa.FamilySyncEndpoint()
+        ..initialize(
+          server,
+          'familySync',
           null,
         ),
       'card': _iwwls8qa.CardEndpoint()
@@ -502,6 +510,44 @@ class Endpoints extends _is.EndpointDispatch {
         ),
       },
     );
+    connectors['familySync'] = _is.EndpointConnector(
+      name: 'familySync',
+      endpoint: endpoints['familySync']!,
+      methodConnectors: {
+        'sync': _is.MethodStreamConnector(
+          name: 'sync',
+          params: {
+            'once': _is.ParameterDescription(
+              name: 'once',
+              type: _is.getType<bool>(),
+              nullable: false,
+            ),
+          },
+          streamParams: {
+            'changes':
+                _is.StreamParameterDescription<
+                  _izehhkf5.OfflineSyncStreamEvent
+                >(
+                  name: 'changes',
+                  nullable: false,
+                ),
+          },
+          returnType: _is.MethodStreamReturnType.streamType,
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+                Map<String, Stream> streamParams,
+              ) => (endpoints['familySync'] as _iwwls8qa.FamilySyncEndpoint)
+                  .sync(
+                    session,
+                    changes: streamParams['changes']!
+                        .cast<_izehhkf5.OfflineSyncStreamEvent>(),
+                    once: params['once'],
+                  ),
+        ),
+      },
+    );
     connectors['card'] = _is.EndpointConnector(
       name: 'card',
       endpoint: endpoints['card']!,
@@ -601,6 +647,8 @@ class Endpoints extends _is.EndpointDispatch {
       },
     );
     modules['serverpod_auth_idp'] = _iais.Endpoints()
+      ..initializeEndpoints(server);
+    modules['serverpod_offline_sync'] = _izehhkf5.Endpoints()
       ..initializeEndpoints(server);
     modules['serverpod_auth_core'] = _iacs.Endpoints()
       ..initializeEndpoints(server);

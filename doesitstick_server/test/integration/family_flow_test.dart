@@ -8,6 +8,7 @@ import 'package:doesitstick_server/src/worksheets/worksheet_reader.dart';
 import 'package:doesitstick_server/src/worksheets/worksheet_service.dart';
 import 'package:test/test.dart';
 
+import 'synced_serverpod.dart';
 import 'test_tools/serverpod_test_tools.dart';
 
 const _alexId = '11111111-1111-4111-8111-111111111111';
@@ -24,7 +25,10 @@ MarkInput _mark(int questionId, Outcome outcome, {String? id, DateTime? at}) =>
     );
 
 void main() {
-  withServerpod('Given two parents in one family', (sessionBuilder, endpoints) {
+  withSyncedServerpod('Given two parents in one family', (
+    sessionBuilder,
+    endpoints,
+  ) {
     final alex = sessionBuilder.copyWith(
       authentication: AuthenticationOverride.authenticationInfo(_alexId, {}),
     );
@@ -286,7 +290,10 @@ void main() {
     );
   });
 
-  withServerpod('Given a photographed worksheet', (sessionBuilder, endpoints) {
+  withSyncedServerpod('Given a photographed worksheet', (
+    sessionBuilder,
+    endpoints,
+  ) {
     final alex = sessionBuilder.copyWith(
       authentication: AuthenticationOverride.authenticationInfo(_alexId, {}),
     );
@@ -389,7 +396,10 @@ void main() {
     });
   });
 
-  withServerpod('Given the maintenance sweep', (sessionBuilder, endpoints) {
+  withSyncedServerpod('Given the maintenance sweep', (
+    sessionBuilder,
+    endpoints,
+  ) {
     final alex = sessionBuilder.copyWith(
       authentication: AuthenticationOverride.authenticationInfo(_alexId, {}),
     );
@@ -452,7 +462,10 @@ void main() {
     });
   });
 
-  withServerpod('Given a signed-out visitor', (sessionBuilder, endpoints) {
+  withSyncedServerpod('Given a signed-out visitor', (
+    sessionBuilder,
+    endpoints,
+  ) {
     test('when asking for family data then access is refused', () async {
       final anon = sessionBuilder.copyWith(
         authentication: AuthenticationOverride.unauthenticated(),

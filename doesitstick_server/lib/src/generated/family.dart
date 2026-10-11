@@ -19,6 +19,7 @@ abstract class Family implements _is.TableRow<int?>, _is.ProtocolSerialization {
     required this.childName,
     required this.inviteCode,
     this.shareToken,
+    this.syncSpace,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -27,6 +28,7 @@ abstract class Family implements _is.TableRow<int?>, _is.ProtocolSerialization {
     required String childName,
     required String inviteCode,
     String? shareToken,
+    _is.UuidValue? syncSpace,
     DateTime? createdAt,
   }) = _FamilyImpl;
 
@@ -36,6 +38,9 @@ abstract class Family implements _is.TableRow<int?>, _is.ProtocolSerialization {
       childName: jsonSerialization['childName'] as String,
       inviteCode: jsonSerialization['inviteCode'] as String,
       shareToken: jsonSerialization['shareToken'] as String?,
+      syncSpace: jsonSerialization['syncSpace'] == null
+          ? null
+          : _is.UuidValueJsonExtension.fromJson(jsonSerialization['syncSpace']),
       createdAt: jsonSerialization['createdAt'] == null
           ? null
           : _is.DateTimeJsonExtension.fromJson(jsonSerialization['createdAt']),
@@ -56,6 +61,9 @@ abstract class Family implements _is.TableRow<int?>, _is.ProtocolSerialization {
   /// Set only when a parent shares the weekly page; revocable.
   String? shareToken;
 
+  /// The offline sync space both parents' phones sync marks in.
+  _is.UuidValue? syncSpace;
+
   DateTime createdAt;
 
   @override
@@ -69,6 +77,7 @@ abstract class Family implements _is.TableRow<int?>, _is.ProtocolSerialization {
     String? childName,
     String? inviteCode,
     String? shareToken,
+    _is.UuidValue? syncSpace,
     DateTime? createdAt,
   });
   @override
@@ -79,6 +88,7 @@ abstract class Family implements _is.TableRow<int?>, _is.ProtocolSerialization {
       'childName': childName,
       'inviteCode': inviteCode,
       if (shareToken != null) 'shareToken': shareToken,
+      if (syncSpace != null) 'syncSpace': syncSpace?.toJson(),
       'createdAt': createdAt.toJson(),
     };
   }
@@ -91,6 +101,7 @@ abstract class Family implements _is.TableRow<int?>, _is.ProtocolSerialization {
       'childName': childName,
       'inviteCode': inviteCode,
       if (shareToken != null) 'shareToken': shareToken,
+      if (syncSpace != null) 'syncSpace': syncSpace?.toJson(),
       'createdAt': createdAt.toJson(),
     };
   }
@@ -131,12 +142,14 @@ class _FamilyImpl extends Family {
     required String childName,
     required String inviteCode,
     String? shareToken,
+    _is.UuidValue? syncSpace,
     DateTime? createdAt,
   }) : super._(
          id: id,
          childName: childName,
          inviteCode: inviteCode,
          shareToken: shareToken,
+         syncSpace: syncSpace,
          createdAt: createdAt,
        );
 
@@ -149,6 +162,7 @@ class _FamilyImpl extends Family {
     String? childName,
     String? inviteCode,
     Object? shareToken = _Undefined,
+    Object? syncSpace = _Undefined,
     DateTime? createdAt,
   }) {
     return Family(
@@ -156,6 +170,7 @@ class _FamilyImpl extends Family {
       childName: childName ?? this.childName,
       inviteCode: inviteCode ?? this.inviteCode,
       shareToken: shareToken is String? ? shareToken : this.shareToken,
+      syncSpace: syncSpace is _is.UuidValue? ? syncSpace : this.syncSpace,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -176,6 +191,13 @@ class FamilyUpdateTable extends _is.UpdateTable<FamilyTable> {
 
   _is.ColumnValue<String, String> shareToken(String? value) => _is.ColumnValue(
     table.shareToken,
+    value,
+  );
+
+  _is.ColumnValue<_is.UuidValue, _is.UuidValue> syncSpace(
+    _is.UuidValue? value,
+  ) => _is.ColumnValue(
+    table.syncSpace,
     value,
   );
 
@@ -201,6 +223,10 @@ class FamilyTable extends _is.Table<int?> {
       'shareToken',
       this,
     );
+    syncSpace = _is.ColumnUuid(
+      'syncSpace',
+      this,
+    );
     createdAt = _is.ColumnDateTime(
       'createdAt',
       this,
@@ -217,6 +243,9 @@ class FamilyTable extends _is.Table<int?> {
   /// Set only when a parent shares the weekly page; revocable.
   late final _is.ColumnString shareToken;
 
+  /// The offline sync space both parents' phones sync marks in.
+  late final _is.ColumnUuid syncSpace;
+
   late final _is.ColumnDateTime createdAt;
 
   @override
@@ -225,6 +254,7 @@ class FamilyTable extends _is.Table<int?> {
     childName,
     inviteCode,
     shareToken,
+    syncSpace,
     createdAt,
   ];
 }
