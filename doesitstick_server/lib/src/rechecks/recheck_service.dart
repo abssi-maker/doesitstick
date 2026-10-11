@@ -5,6 +5,7 @@ import '../family/family_service.dart';
 import '../generated/future_calls.dart';
 import '../generated/protocol.dart';
 import '../math/concepts.dart';
+import '../jobs.dart';
 
 /// Re-checks 2 and 7 days after tonight's card. The [Recheck] row is the
 /// source of truth; the future call only says "look at this row now", so a
@@ -42,10 +43,13 @@ class RecheckService {
           status: RecheckStatus.scheduled,
         ),
       );
-      await session.serverpod.futureCalls
-          .callAtTime(recheck.dueAt, identifier: futureCallId(recheck.id!))
-          .recheck
-          .materialize(recheck.id!);
+      // Without future calls, the maintenance sweep brings it up when due.
+      if (Jobs.futureCallsOn(session.serverpod)) {
+        await session.serverpod.futureCalls
+            .callAtTime(recheck.dueAt, identifier: futureCallId(recheck.id!))
+            .recheck
+            .materialize(recheck.id!);
+      }
       created.add(recheck);
     }
     return created;
@@ -127,13 +131,15 @@ class RecheckService {
         session,
         claimed.copyWith(status: RecheckStatus.scheduled),
       );
-      await session.serverpod.futureCalls
-          .callWithDelay(
-            const Duration(minutes: 10),
-            identifier: futureCallId(recheckId),
-          )
-          .recheck
-          .materialize(recheckId);
+      if (Jobs.futureCallsOn(session.serverpod)) {
+        await session.serverpod.futureCalls
+            .callWithDelay(
+              const Duration(minutes: 10),
+              identifier: futureCallId(recheckId),
+            )
+            .recheck
+            .materialize(recheckId);
+      }
       return null;
     }
     await Recheck.db.updateRow(session, claimed.copyWith(cardId: card.id));
@@ -164,7 +170,9 @@ class RecheckService {
     var made = 0;
     for (final r in due) {
       final card = await materialize(session, r.id!, fastForwarded: true);
-      await session.serverpod.futureCalls.cancel(futureCallId(r.id!));
+      if (Jobs.futureCallsOn(session.serverpod)) {
+        await session.serverpod.futureCalls.cancel(futureCallId(r.id!));
+      }
       if (card != null) made++;
     }
     return made;

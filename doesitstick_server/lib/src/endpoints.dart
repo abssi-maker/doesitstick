@@ -9,6 +9,7 @@ import 'digest/digest_service.dart';
 import 'family/family_service.dart';
 import 'generated/future_calls.dart';
 import 'generated/protocol.dart';
+import 'jobs.dart';
 import 'math/concepts.dart';
 import 'rechecks/recheck_service.dart';
 import 'worksheets/worksheet_reader.dart';
@@ -265,10 +266,18 @@ class WorksheetEndpoint extends Endpoint {
       session,
       ws.copyWith(status: WorksheetStatus.reading),
     );
-    await session.serverpod.futureCalls
-        .callWithDelay(Duration.zero, identifier: 'worksheet-$worksheetId')
-        .readWorksheet
-        .read(worksheetId);
+    if (Jobs.futureCallsOn(session.serverpod)) {
+      await session.serverpod.futureCalls
+          .callWithDelay(Duration.zero, identifier: 'worksheet-$worksheetId')
+          .readWorksheet
+          .read(worksheetId);
+    } else {
+      Jobs.runSoon(
+        session.serverpod,
+        'Reading worksheet $worksheetId',
+        (s) => WorksheetService.process(s, worksheetId),
+      );
+    }
     await FamilyService.postEvent(
       session,
       member.familyId,

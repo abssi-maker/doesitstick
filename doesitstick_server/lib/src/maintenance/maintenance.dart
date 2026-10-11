@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:serverpod/serverpod.dart';
 
 import '../generated/future_calls.dart';
 import '../generated/protocol.dart';
 import '../rechecks/recheck_service.dart';
 import '../worksheets/worksheet_service.dart';
+import '../jobs.dart';
 
 class SweepResult {
   final int rechecks;
@@ -21,17 +24,37 @@ class MaintenanceService {
   static const unreadAfter = Duration(hours: 1);
   static const recheckGrace = Duration(minutes: 5);
 
+  /// Without future calls, the sweep runs in this process this often, and
+  /// is what brings re-checks up when they're due.
+  static const inProcessInterval = Duration(minutes: 1);
+  static Timer? _timer;
+
   /// Re-registers the recurring sweep at boot, replacing any earlier one.
   static Future<void> schedule(Serverpod pod) async {
-    await pod.futureCalls.cancel(sweepId);
-    await pod.futureCalls
-        .callRecurring(identifier: sweepId)
-        .every(interval)
-        .maintenance
-        .sweep();
+    if (Jobs.futureCallsOn(pod)) {
+      await pod.futureCalls.cancel(sweepId);
+      await pod.futureCalls
+          .callRecurring(identifier: sweepId)
+          .every(interval)
+          .maintenance
+          .sweep();
+      return;
+    }
+    void run() => Jobs.runSoon(
+      pod,
+      'Maintenance sweep',
+      (s) => sweep(s, recheckGrace: Duration.zero),
+    );
+    _timer?.cancel();
+    _timer = Timer.periodic(inProcessInterval, (_) => run());
+    run();
   }
 
-  static Future<SweepResult> sweep(Session session, {DateTime? now}) async {
+  static Future<SweepResult> sweep(
+    Session session, {
+    DateTime? now,
+    Duration recheckGrace = recheckGrace,
+  }) async {
     final t = (now ?? DateTime.now()).toUtc();
 
     final overdue = await Recheck.db.find(
