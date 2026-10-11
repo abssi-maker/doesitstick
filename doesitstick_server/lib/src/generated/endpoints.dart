@@ -10,6 +10,7 @@
 // ignore_for_file: invalid_use_of_internal_member
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+import 'package:doesitstick_server/src/generated/cheer.dart' as _i5p289v0;
 import 'package:doesitstick_server/src/generated/concept_id.dart' as _iqejb9wz;
 import 'package:doesitstick_server/src/generated/future_calls.dart'
     as _i7eeai5e;
@@ -395,6 +396,62 @@ class Endpoints extends _is.EndpointDispatch {
                 Map<String, dynamic> params,
               ) async => (endpoints['family'] as _iwwls8qa.FamilyEndpoint)
                   .concepts(session),
+        ),
+        'presence': _is.MethodConnector(
+          name: 'presence',
+          params: {
+            'cardId': _is.ParameterDescription(
+              name: 'cardId',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+            'step': _is.ParameterDescription(
+              name: 'step',
+              type: _is.getType<int?>(),
+              nullable: true,
+            ),
+            'detail': _is.ParameterDescription(
+              name: 'detail',
+              type: _is.getType<String>(),
+              nullable: false,
+            ),
+            'greet': _is.ParameterDescription(
+              name: 'greet',
+              type: _is.getType<bool>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['family'] as _iwwls8qa.FamilyEndpoint).presence(
+                    session,
+                    params['cardId'],
+                    params['step'],
+                    params['detail'],
+                    greet: params['greet'],
+                  ),
+        ),
+        'cheer': _is.MethodConnector(
+          name: 'cheer',
+          params: {
+            'cheer': _is.ParameterDescription(
+              name: 'cheer',
+              type: _is.getType<_i5p289v0.Cheer>(),
+              nullable: false,
+            ),
+          },
+          call:
+              (
+                _is.Session session,
+                Map<String, dynamic> params,
+              ) async =>
+                  (endpoints['family'] as _iwwls8qa.FamilyEndpoint).cheer(
+                    session,
+                    params['cheer'],
+                  ),
         ),
         'updates': _is.MethodStreamConnector(
           name: 'updates',

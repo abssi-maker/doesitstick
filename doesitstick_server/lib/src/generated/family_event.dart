@@ -20,6 +20,8 @@ abstract class FamilyEvent
     required this.message,
     this.actorName,
     this.cardId,
+    this.step,
+    this.detail,
     required this.at,
   });
 
@@ -28,6 +30,8 @@ abstract class FamilyEvent
     required String message,
     String? actorName,
     int? cardId,
+    int? step,
+    String? detail,
     required DateTime at,
   }) = _FamilyEventImpl;
 
@@ -37,6 +41,8 @@ abstract class FamilyEvent
       message: jsonSerialization['message'] as String,
       actorName: jsonSerialization['actorName'] as String?,
       cardId: jsonSerialization['cardId'] as int?,
+      step: jsonSerialization['step'] as int?,
+      detail: jsonSerialization['detail'] as String?,
       at: _is.DateTimeJsonExtension.fromJson(jsonSerialization['at']),
     );
   }
@@ -49,6 +55,13 @@ abstract class FamilyEvent
 
   int? cardId;
 
+  /// Presence: the problem the sender is on (0-based) and what they're
+  /// doing there (`working`, `hint`, `done`, `following`, or `around` off any card;
+  /// `gone` when the app is closed).
+  int? step;
+
+  String? detail;
+
   DateTime at;
 
   /// Returns a shallow copy of this [FamilyEvent]
@@ -59,6 +72,8 @@ abstract class FamilyEvent
     String? message,
     String? actorName,
     int? cardId,
+    int? step,
+    String? detail,
     DateTime? at,
   });
   @override
@@ -69,6 +84,8 @@ abstract class FamilyEvent
       'message': message,
       if (actorName != null) 'actorName': actorName,
       if (cardId != null) 'cardId': cardId,
+      if (step != null) 'step': step,
+      if (detail != null) 'detail': detail,
       'at': at.toJson(),
     };
   }
@@ -81,6 +98,8 @@ abstract class FamilyEvent
       'message': message,
       if (actorName != null) 'actorName': actorName,
       if (cardId != null) 'cardId': cardId,
+      if (step != null) 'step': step,
+      if (detail != null) 'detail': detail,
       'at': at.toJson(),
     };
   }
@@ -99,12 +118,16 @@ class _FamilyEventImpl extends FamilyEvent {
     required String message,
     String? actorName,
     int? cardId,
+    int? step,
+    String? detail,
     required DateTime at,
   }) : super._(
          kind: kind,
          message: message,
          actorName: actorName,
          cardId: cardId,
+         step: step,
+         detail: detail,
          at: at,
        );
 
@@ -117,6 +140,8 @@ class _FamilyEventImpl extends FamilyEvent {
     String? message,
     Object? actorName = _Undefined,
     Object? cardId = _Undefined,
+    Object? step = _Undefined,
+    Object? detail = _Undefined,
     DateTime? at,
   }) {
     return FamilyEvent(
@@ -124,6 +149,8 @@ class _FamilyEventImpl extends FamilyEvent {
       message: message ?? this.message,
       actorName: actorName is String? ? actorName : this.actorName,
       cardId: cardId is int? ? cardId : this.cardId,
+      step: step is int? ? step : this.step,
+      detail: detail is String? ? detail : this.detail,
       at: at ?? this.at,
     );
   }

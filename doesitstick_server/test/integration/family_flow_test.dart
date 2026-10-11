@@ -189,6 +189,56 @@ void main() {
       },
     );
 
+    test(
+      'when Alex is on a problem and Sam sends a cheer then both arrive live',
+      () async {
+        final card = await tonight(ConceptId.multiply2x1);
+        final received = <FamilyEvent>[];
+        final connected = Completer<void>();
+        final sub = endpoints.family.updates(alex).listen((e) {
+          received.add(e);
+          if (!connected.isCompleted) connected.complete();
+        });
+        await connected.future;
+        await endpoints.family.presence(
+          alex,
+          card.card.id,
+          1,
+          'hint',
+          greet: true,
+        );
+        await endpoints.family.cheer(sam, Cheer.proud);
+        await flushEventQueue();
+        await sub.cancel();
+        final presence = received.firstWhere((e) => e.kind == 'presence');
+        expect(presence.actorName, 'Alex');
+        expect((presence.cardId, presence.step), (card.card.id, 1));
+        expect(presence.detail, 'hint');
+        expect(presence.message, 'hi');
+        final cheer = received.firstWhere((e) => e.kind == 'cheer');
+        expect(cheer.actorName, 'Sam');
+        expect(cheer.message, 'Proud of you for sticking with it, Maya!');
+      },
+    );
+
+    test(
+      'when presence names another family’s card then it is refused',
+      () async {
+        final card = await tonight(ConceptId.multiply2x1);
+        await endpoints.family.create(other, 'Kim', 'Pat');
+        await expectLater(
+          endpoints.family.presence(
+            other,
+            card.card.id,
+            0,
+            'working',
+            greet: false,
+          ),
+          throwsA(isA<DidItStickException>()),
+        );
+      },
+    );
+
     test('when tonight’s card has a shaky answer then day-2 and day-7 '
         're-checks are scheduled once', () async {
       final card = await tonight(ConceptId.subtractCountUp);

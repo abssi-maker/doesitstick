@@ -35,6 +35,8 @@ class CardService {
       methodNote: g.methodNote,
       listenFor: g.listenFor,
       hint: g.hint,
+      nextStep: g.nextStep,
+      slips: g.slips,
       checkedByCode: QuestionChecker.check(g).isEmpty,
       fromWorksheet: g.fromWorksheet,
       variantOfQuestionId: variantOf,

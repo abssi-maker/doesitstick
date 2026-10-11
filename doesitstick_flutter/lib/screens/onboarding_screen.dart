@@ -7,6 +7,10 @@ import '../theme/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/invite.dart';
 
+/// Set when this parent has just joined their partner's family, so the
+/// home screen opens with a welcome.
+bool justJoined = false;
+
 /// Sets this parent up: start a family for the child (then, optionally,
 /// invite the partner), or join from a partner's invite.
 class OnboardingScreen extends StatefulWidget {
@@ -32,6 +36,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     try {
       if (_joining) {
         await client.family.join(_code.text, _name.text);
+        justJoined = true;
         widget.onDone();
       } else {
         final family = await client.family.create(_child.text, _name.text);

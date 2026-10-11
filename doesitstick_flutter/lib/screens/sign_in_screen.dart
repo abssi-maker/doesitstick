@@ -22,9 +22,10 @@ const _features = [
         'away.',
   ),
   (
-    '♡',
-    'A kind ending',
-    'When it isn’t clicking tonight, a warm way to stop. No yelling.',
+    '🔎',
+    'Help for the wrong answer',
+    'Type what they said: see the likely slip and what to ask next. If it '
+        'isn’t clicking, a kind way to stop.',
   ),
   (
     '✓',
@@ -34,13 +35,13 @@ const _features = [
   ),
   (
     '👪',
-    'Both parents in sync',
-    'Your partner sees each answer live on their phone.',
+    'Both parents, together',
+    'Your partner follows live from work and can send your child a cheer.',
   ),
   (
     '🔁',
     'Did it stick?',
-    'A 1-minute check on day 2 and day 7, with new numbers.',
+    'A quick check on day 2 and day 7, with new numbers.',
   ),
   (
     '🌼',

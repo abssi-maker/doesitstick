@@ -1,0 +1,6 @@
+### Preset cheers the other parent can send to the table. No free text.
+enum: Cheer
+values:
+  - proud
+  - thinking
+  - keepGoing

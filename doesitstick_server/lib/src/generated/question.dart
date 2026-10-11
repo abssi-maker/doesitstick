@@ -14,6 +14,7 @@ import 'package:doesitstick_server/src/generated/protocol.dart' as _i0djspd0;
 import 'package:serverpod/serverpod.dart' as _is;
 import 'concept_id.dart' as _igk9xj07;
 import 'question_style.dart' as _i323tk66;
+import 'slip.dart' as _ijxu783d;
 
 /// One question to ask out loud. Every number in it was produced and
 /// re-checked by server code before the card was published.
@@ -35,6 +36,8 @@ abstract class Question
     required this.methodNote,
     required this.listenFor,
     required this.hint,
+    this.nextStep,
+    this.slips,
     required this.checkedByCode,
     bool? fromWorksheet,
     this.variantOfQuestionId,
@@ -56,6 +59,8 @@ abstract class Question
     required String methodNote,
     required String listenFor,
     required String hint,
+    String? nextStep,
+    List<_ijxu783d.Slip>? slips,
     required bool checkedByCode,
     bool? fromWorksheet,
     int? variantOfQuestionId,
@@ -84,6 +89,12 @@ abstract class Question
       methodNote: jsonSerialization['methodNote'] as String,
       listenFor: jsonSerialization['listenFor'] as String,
       hint: jsonSerialization['hint'] as String,
+      nextStep: jsonSerialization['nextStep'] as String?,
+      slips: jsonSerialization['slips'] == null
+          ? null
+          : _i0djspd0.Protocol().deserialize<List<_ijxu783d.Slip>>(
+              jsonSerialization['slips'],
+            ),
       checkedByCode: _is.BoolJsonExtension.fromJson(
         jsonSerialization['checkedByCode'],
       ),
@@ -129,6 +140,13 @@ abstract class Question
 
   String hint;
 
+  /// The first step done together: the help between [hint] and the
+  /// full walk-through in [methodNote]. Never states the answer.
+  String? nextStep;
+
+  /// Common wrong answers for these numbers, each re-checked by code.
+  List<_ijxu783d.Slip>? slips;
+
   bool checkedByCode;
 
   /// True when the numbers came off the child's own worksheet.
@@ -159,6 +177,8 @@ abstract class Question
     String? methodNote,
     String? listenFor,
     String? hint,
+    String? nextStep,
+    List<_ijxu783d.Slip>? slips,
     bool? checkedByCode,
     bool? fromWorksheet,
     int? variantOfQuestionId,
@@ -182,6 +202,8 @@ abstract class Question
       'methodNote': methodNote,
       'listenFor': listenFor,
       'hint': hint,
+      if (nextStep != null) 'nextStep': nextStep,
+      if (slips != null) 'slips': slips?.toJson(valueToJson: (v) => v.toJson()),
       'checkedByCode': checkedByCode,
       'fromWorksheet': fromWorksheet,
       if (variantOfQuestionId != null)
@@ -208,6 +230,9 @@ abstract class Question
       'methodNote': methodNote,
       'listenFor': listenFor,
       'hint': hint,
+      if (nextStep != null) 'nextStep': nextStep,
+      if (slips != null)
+        'slips': slips?.toJson(valueToJson: (v) => v.toJsonForProtocol()),
       'checkedByCode': checkedByCode,
       'fromWorksheet': fromWorksheet,
       if (variantOfQuestionId != null)
@@ -262,6 +287,8 @@ class _QuestionImpl extends Question {
     required String methodNote,
     required String listenFor,
     required String hint,
+    String? nextStep,
+    List<_ijxu783d.Slip>? slips,
     required bool checkedByCode,
     bool? fromWorksheet,
     int? variantOfQuestionId,
@@ -281,6 +308,8 @@ class _QuestionImpl extends Question {
          methodNote: methodNote,
          listenFor: listenFor,
          hint: hint,
+         nextStep: nextStep,
+         slips: slips,
          checkedByCode: checkedByCode,
          fromWorksheet: fromWorksheet,
          variantOfQuestionId: variantOfQuestionId,
@@ -306,6 +335,8 @@ class _QuestionImpl extends Question {
     String? methodNote,
     String? listenFor,
     String? hint,
+    Object? nextStep = _Undefined,
+    Object? slips = _Undefined,
     bool? checkedByCode,
     bool? fromWorksheet,
     Object? variantOfQuestionId = _Undefined,
@@ -326,6 +357,10 @@ class _QuestionImpl extends Question {
       methodNote: methodNote ?? this.methodNote,
       listenFor: listenFor ?? this.listenFor,
       hint: hint ?? this.hint,
+      nextStep: nextStep is String? ? nextStep : this.nextStep,
+      slips: slips is List<_ijxu783d.Slip>?
+          ? slips
+          : this.slips?.map((e0) => e0.copyWith()).toList(),
       checkedByCode: checkedByCode ?? this.checkedByCode,
       fromWorksheet: fromWorksheet ?? this.fromWorksheet,
       variantOfQuestionId: variantOfQuestionId is int?
@@ -414,6 +449,18 @@ class QuestionUpdateTable extends _is.UpdateTable<QuestionTable> {
     value,
   );
 
+  _is.ColumnValue<String, String> nextStep(String? value) => _is.ColumnValue(
+    table.nextStep,
+    value,
+  );
+
+  _is.ColumnValue<List<_ijxu783d.Slip>, List<_ijxu783d.Slip>> slips(
+    List<_ijxu783d.Slip>? value,
+  ) => _is.ColumnValue(
+    table.slips,
+    value,
+  );
+
   _is.ColumnValue<bool, bool> checkedByCode(bool value) => _is.ColumnValue(
     table.checkedByCode,
     value,
@@ -491,6 +538,14 @@ class QuestionTable extends _is.Table<int?> {
       'hint',
       this,
     );
+    nextStep = _is.ColumnString(
+      'nextStep',
+      this,
+    );
+    slips = _is.ColumnSerializable<List<_ijxu783d.Slip>>(
+      'slips',
+      this,
+    );
     checkedByCode = _is.ColumnBool(
       'checkedByCode',
       this,
@@ -536,6 +591,13 @@ class QuestionTable extends _is.Table<int?> {
 
   late final _is.ColumnString hint;
 
+  /// The first step done together: the help between [hint] and the
+  /// full walk-through in [methodNote]. Never states the answer.
+  late final _is.ColumnString nextStep;
+
+  /// Common wrong answers for these numbers, each re-checked by code.
+  late final _is.ColumnSerializable<List<_ijxu783d.Slip>> slips;
+
   late final _is.ColumnBool checkedByCode;
 
   /// True when the numbers came off the child's own worksheet.
@@ -561,6 +623,8 @@ class QuestionTable extends _is.Table<int?> {
     methodNote,
     listenFor,
     hint,
+    nextStep,
+    slips,
     checkedByCode,
     fromWorksheet,
     variantOfQuestionId,

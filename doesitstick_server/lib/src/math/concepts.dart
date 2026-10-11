@@ -93,6 +93,12 @@ class GeneratedQuestion {
   final String listenFor;
   final String hint;
 
+  /// The first step done together, between [hint] and [methodNote].
+  final String nextStep;
+
+  /// Wrong answers children often give for these numbers.
+  final List<Slip> slips;
+
   /// True when the numbers were read off the child's own worksheet.
   final bool fromWorksheet;
 
@@ -109,10 +115,16 @@ class GeneratedQuestion {
     required this.methodNote,
     required this.listenFor,
     required this.hint,
+    this.nextStep = '',
+    this.slips = const [],
     this.fromWorksheet = false,
   });
 
-  GeneratedQuestion fromTheWorksheet() => GeneratedQuestion(
+  GeneratedQuestion _copy({
+    String? nextStep,
+    List<Slip>? slips,
+    bool? fromWorksheet,
+  }) => GeneratedQuestion(
     concept: concept,
     style: style,
     seed: seed,
@@ -125,8 +137,12 @@ class GeneratedQuestion {
     methodNote: methodNote,
     listenFor: listenFor,
     hint: hint,
-    fromWorksheet: true,
+    nextStep: nextStep ?? this.nextStep,
+    slips: slips ?? this.slips,
+    fromWorksheet: fromWorksheet ?? this.fromWorksheet,
   );
+
+  GeneratedQuestion fromTheWorksheet() => _copy(fromWorksheet: true);
 }
 
 class QuestionGenerationException implements Exception {
@@ -346,27 +362,39 @@ class QuestionGenerator {
     }
   }
 
-  /// Builds a question from numbers already known to [fits] the concept.
+  /// Builds a question from numbers already known to [fits] the concept,
+  /// with its coaching: the next step and the common slips.
   static GeneratedQuestion build(
     ConceptId concept,
     QuestionStyle style,
     int seed,
     List<int> ops,
   ) {
-    switch (concept) {
-      case ConceptId.multiply2x1:
-        return _multiply2x1(style, seed, ops);
-      case ConceptId.multiply2x2:
-        return _multiply2x2(style, seed, ops);
-      case ConceptId.addRegroup:
-        return _addRegroup(style, seed, ops);
-      case ConceptId.subtractCountUp:
-        return _subtractCountUp(style, seed, ops);
-      case ConceptId.divideByOneDigit:
-        return _divide(style, seed, ops);
-      case ConceptId.equivalentFractions:
-        return _fractions(style, seed, ops);
-    }
+    final q = switch (concept) {
+      ConceptId.multiply2x1 => _multiply2x1(style, seed, ops),
+      ConceptId.multiply2x2 => _multiply2x2(style, seed, ops),
+      ConceptId.addRegroup => _addRegroup(style, seed, ops),
+      ConceptId.subtractCountUp => _subtractCountUp(style, seed, ops),
+      ConceptId.divideByOneDigit => _divide(style, seed, ops),
+      ConceptId.equivalentFractions => _fractions(style, seed, ops),
+    };
+    final (nextStep, slips) = Coaching.forNumbers(concept, ops);
+    final wrong = q.shownWrong;
+    // On a catch-the-mistake question the likeliest slip is agreeing with
+    // the mistake on screen, so it comes first.
+    final all = [
+      if (wrong != null)
+        Slip(answer: wrong, what: 'They agreed with the mistake.', ask: q.hint),
+      ...slips,
+    ];
+    final seen = <int>{q.answerValue};
+    return q._copy(
+      nextStep: nextStep,
+      slips: [
+        for (final s in all)
+          if (s.answer > 0 && seen.add(s.answer)) s,
+      ],
+    );
   }
 
   static int _between(Random r, int lo, int hi) => lo + r.nextInt(hi - lo + 1);
@@ -783,7 +811,8 @@ class QuestionGenerator {
           seed: seed,
           operands: [num, den, k],
           prompt: 'Why is $num/$den the same amount as $ans/$big?',
-          expectedAnswer: 'Top and bottom were both multiplied by $k',
+          expectedAnswer:
+              'Top and bottom were both multiplied by $k, so it’s $ans/$big',
           answerValue: ans,
           methodNote: note,
           listenFor: why,
@@ -809,6 +838,287 @@ class QuestionGenerator {
           hint: hint,
         );
     }
+  }
+}
+
+/// What to do when the child is stuck or says something else: the next
+/// step to take together, and the wrong answers children typically give for
+/// these numbers (a forgotten carry, a skipped box, adding instead of
+/// multiplying), each with what probably happened and a question to ask.
+/// All of it is arithmetic on the numbers; [QuestionChecker] recomputes
+/// every slip on its own.
+class Coaching {
+  static (String, List<Slip>) forNumbers(ConceptId concept, List<int> ops) {
+    switch (concept) {
+      case ConceptId.multiply2x1:
+        return _multiply2x1(ops[0], ops[1]);
+      case ConceptId.multiply2x2:
+        return _multiply2x2(ops[0], ops[1]);
+      case ConceptId.addRegroup:
+        return _addRegroup(ops[0], ops[1]);
+      case ConceptId.subtractCountUp:
+        return _subtract(ops[0], ops[1]);
+      case ConceptId.divideByOneDigit:
+        return _divide(ops[0], ops[1]);
+      case ConceptId.equivalentFractions:
+        return _fractions(ops[0], ops[1], ops[2]);
+    }
+  }
+
+  static (String, List<Slip>) _multiply2x1(int a, int b) {
+    final td = a ~/ 10, o = a % 10, t = td * 10;
+    final p1 = t * b, p2 = o * b, ans = p1 + p2, carry = p2 ~/ 10;
+    final timesTable =
+        'Let’s check each box: what is $t × $b? What is $o × $b?';
+    return (
+      '$t × $b = $p1. Now: what is $o × $b? Then add the two.',
+      [
+        Slip(
+          answer: td * b * 10 + p2 % 10,
+          what: 'The $carry tens from $o × $b = $p2 got lost.',
+          ask: 'What is $o × $b? Where did the ${carry * 10} go?',
+        ),
+        Slip(
+          answer: td * b + p2,
+          what: 'They did $td × $b instead of $t × $b.',
+          ask: 'Is the $td in $a worth $td, or $t?',
+        ),
+        Slip(
+          answer: t + p2,
+          what: 'Only the $o got multiplied; the $t didn’t.',
+          ask: 'We need $b groups of $a. Did the $t get multiplied by $b too?',
+        ),
+        Slip(
+          answer: a + b,
+          what: 'They added instead of multiplying.',
+          ask: 'Is it $a plus $b, or $b groups of $a?',
+        ),
+        Slip(
+          answer: int.parse('${td * b}$p2'),
+          what: 'They wrote ${td * b} and $p2 side by side.',
+          ask: '$t × $b is $p1, not ${td * b}. What is $p1 + $p2?',
+        ),
+        Slip(
+          answer: ans - b,
+          what: 'One group of $b short: likely a times-table slip.',
+          ask: timesTable,
+        ),
+        Slip(
+          answer: ans + b,
+          what: 'One group of $b too many: likely a times-table slip.',
+          ask: timesTable,
+        ),
+      ],
+    );
+  }
+
+  static (String, List<Slip>) _multiply2x2(int a, int b) {
+    final ta = a ~/ 10 * 10, oa = a % 10, tb = b ~/ 10 * 10, ob = b % 10;
+    final p1 = ta * tb, p2 = ta * ob, p3 = oa * tb, p4 = oa * ob;
+    final ans = p1 + p2 + p3 + p4;
+    const count = 'Count the boxes: did all four get added?';
+    const addAgain = 'The boxes look right. Let’s add the four again, slowly.';
+    return (
+      'First box: $ta × $tb = $p1. Now fill the other three: '
+          '$ta × $ob, $oa × $tb and $oa × $ob.',
+      [
+        Slip(
+          answer: p1 + p4,
+          what: 'They skipped the two middle boxes ($p2 and $p3).',
+          ask: 'How many boxes does the area model have? Which are missing?',
+        ),
+        Slip(
+          answer: a * ob + a * (tb ~/ 10),
+          what: 'The second row lost its zero: $a × $tb is ${a * tb}.',
+          ask: 'In $b, is the ${tb ~/ 10} worth ${tb ~/ 10}, or $tb?',
+        ),
+        Slip(
+          answer: ans - p3,
+          what: 'A middle box is missing ($oa × $tb = $p3).',
+          ask: count,
+        ),
+        Slip(
+          answer: ans - p2,
+          what: 'A middle box is missing ($ta × $ob = $p2).',
+          ask: count,
+        ),
+        for (final off in const [-100, -10, 10, 100])
+          Slip(
+            answer: ans + off,
+            what: 'The boxes are fine; the adding slipped by ${off.abs()}.',
+            ask: addAgain,
+          ),
+      ],
+    );
+  }
+
+  static (String, List<Slip>) _addRegroup(int a, int b) {
+    final ha = a ~/ 100 * 100, hb = b ~/ 100 * 100;
+    final ta = (a ~/ 10) % 10 * 10, tb = (b ~/ 10) % 10 * 10;
+    final h = ha + hb, t = ta + tb, o = a % 10 + b % 10;
+    final ans = h + t + o;
+    return (
+      'Hundreds: $ha + $hb = $h. Tens: $ta + $tb = $t. '
+          'Now the ones: ${a % 10} + ${b % 10}. Then put the three parts together.',
+      [
+        Slip(
+          answer: (h ~/ 100 % 10) * 100 + (t ~/ 10 % 10) * 10 + o % 10,
+          what:
+              'They kept only the last digit of a column and dropped the '
+              'extra ten.',
+          ask: 'What do the ones add up to? Where does the extra ten go?',
+        ),
+        Slip(
+          answer: int.parse('${h ~/ 100}${t ~/ 10}$o'),
+          what: 'They wrote each column’s total side by side.',
+          ask: 'When a column makes 10 or more, where does the extra go?',
+        ),
+        if (o >= 10)
+          Slip(
+            answer: ans - 10,
+            what: 'The ten carried from the ones never got added.',
+            ask: 'The ones make $o. Where did that extra ten go?',
+          ),
+        if (t >= 100)
+          Slip(
+            answer: ans - 100,
+            what: 'The hundred carried from the tens never got added.',
+            ask: 'The tens make $t. Where did that extra hundred go?',
+          ),
+        Slip(
+          answer: a - b,
+          what: 'They took away instead of adding.',
+          ask: 'Should the answer be bigger or smaller than $a?',
+        ),
+      ],
+    );
+  }
+
+  static (String, List<Slip>) _subtract(int a, int b) {
+    final landmarks = QuestionGenerator.countUpLandmarks(b, a);
+    final jumps = <int>[];
+    var cur = b;
+    for (final l in landmarks) {
+      jumps.add(l - cur);
+      cur = l;
+    }
+    final ans = a - b;
+    final borrowOnes = a % 10 < b % 10;
+    final tensTop = (a ~/ 10) % 10 - (borrowOnes ? 1 : 0);
+    final borrowTens = tensTop < (b ~/ 10) % 10;
+    final first = landmarks.first;
+    return (
+      first == a
+          ? 'Start at $b and count up in tens. How many tens to $a?'
+          : 'From $b, jump +${jumps.first} to $first. '
+                'Where is the next friendly number?',
+      [
+        Slip(
+          answer:
+              ((a ~/ 100) - (b ~/ 100)).abs() * 100 +
+              (((a ~/ 10) % 10) - ((b ~/ 10) % 10)).abs() * 10 +
+              ((a % 10) - (b % 10)).abs(),
+          what:
+              'Where the top digit was smaller, they took the top from the '
+              'bottom.',
+          ask: 'Count up from $b to $a. How far is it?',
+        ),
+        if (borrowOnes)
+          Slip(
+            answer: ans + 10,
+            what:
+                'They borrowed a ten for the ones but didn’t take it off '
+                'the tens.',
+            ask: 'When you borrow a ten, what happens to the tens?',
+          ),
+        if (borrowTens)
+          Slip(
+            answer: ans + 100,
+            what:
+                'They borrowed a hundred but didn’t take it off the '
+                'hundreds.',
+            ask: 'When you borrow a hundred, what happens to the hundreds?',
+          ),
+        Slip(
+          answer: a + b,
+          what: 'They added instead of taking away.',
+          ask: 'Should the answer be bigger or smaller than $a?',
+        ),
+        if (jumps.length > 1)
+          for (final j in jumps)
+            Slip(
+              answer: ans - j,
+              what: 'Counting up, they missed the +$j jump.',
+              ask: 'Let’s list the jumps again, starting at $b.',
+            ),
+      ],
+    );
+  }
+
+  static (String, List<Slip>) _divide(int n, int d) {
+    final q = n ~/ d, q10 = q ~/ 10 * 10, q1 = q % 10;
+    final chunk = q10 * d, rest = n - chunk;
+    final check = 'Multiply your answer by $d. Do you get $n?';
+    return (
+      '$q10 groups of $d is $chunk. $n − $chunk = $rest left. '
+          'How many groups of $d fit in $rest?',
+      [
+        Slip(
+          answer: q10,
+          what:
+              'They took the big chunk ($q10 groups) and stopped; $rest is '
+              'still left.',
+          ask: 'What is $q10 × $d? Is anything left over?',
+        ),
+        Slip(answer: q1, what: 'They counted only the last chunk.', ask: check),
+        Slip(answer: q - 1, what: 'One group of $d off.', ask: check),
+        Slip(answer: q + 1, what: 'One group of $d off.', ask: check),
+        Slip(
+          answer: n * d,
+          what: 'They multiplied instead of dividing.',
+          ask: 'Should the answer be bigger or smaller than $n?',
+        ),
+        Slip(
+          answer: n - d,
+          what: 'They took away $d once instead of counting groups.',
+          ask: 'How many groups of $d fit in $n?',
+        ),
+      ],
+    );
+  }
+
+  static (String, List<Slip>) _fractions(int num, int den, int k) {
+    final big = den * k;
+    return (
+      '$den × $k = $big, so we multiply by $k. Now do the same to the top: '
+          'what is $num × $k?',
+      [
+        Slip(
+          answer: num + big - den,
+          what:
+              'They added ${big - den} to the top and bottom instead of '
+              'multiplying.',
+          ask:
+              'What did you multiply $den by to get $big? Do the same to '
+              'the top.',
+        ),
+        Slip(
+          answer: num,
+          what: 'They kept the top the same.',
+          ask: 'The bottom got $k times bigger. What happens to the top?',
+        ),
+        Slip(
+          answer: num * big,
+          what: 'They multiplied the top by $big instead of by $k.',
+          ask: 'What do you multiply $den by to get $big?',
+        ),
+        Slip(
+          answer: k,
+          what: 'They gave the number to multiply by, not the new top.',
+          ask: 'Yes, it’s × $k. Now what is $num × $k?',
+        ),
+      ],
+    );
   }
 }
 
@@ -871,7 +1181,120 @@ class QuestionChecker {
         }
       }
     }
+    _checkCoaching(q, correct, problems);
     return problems;
+  }
+
+  /// Help must never hand over the answer, and every slip must be a real
+  /// modeled mistake for these numbers, recomputed here digit by digit.
+  static void _checkCoaching(
+    GeneratedQuestion q,
+    int correct,
+    List<String> problems,
+  ) {
+    // Help may name other numbers that happen to match the answer ("36
+    // left"); a giveaway states it as a result ("= 322", "is 322"). Small
+    // answers and ones already on screen don't count.
+    final result = RegExp(
+      r'(=|\bis)\s*'
+      '$correct'
+      r'(?![0-9/])',
+    );
+    bool givesAway(String text) =>
+        correct >= 10 && !_mentions(q.prompt, correct) && result.hasMatch(text);
+    if (givesAway(q.hint)) problems.add('hint gives the answer away');
+    if (q.nextStep.isEmpty) problems.add('no next step');
+    if (givesAway(q.nextStep)) problems.add('next step gives the answer away');
+    final known = _knownSlips(q.concept, q.operands, correct);
+    if (q.shownWrong != null) known.add(q.shownWrong!);
+    final seen = <int>{};
+    for (final slip in q.slips) {
+      final a = slip.answer;
+      if (a == correct) problems.add('slip $a is the right answer');
+      if (a <= 0) problems.add('slip $a is not a positive number');
+      if (!seen.add(a)) problems.add('slip $a is listed twice');
+      if (!known.contains(a)) problems.add('slip $a is not a modeled mistake');
+      if (givesAway(slip.ask)) problems.add('slip $a gives the answer away');
+    }
+  }
+
+  static Set<int> _knownSlips(ConceptId concept, List<int> ops, int correct) {
+    String s(int n) => n.toString();
+    int digit(String str, int i) => int.parse(str[i]);
+    final known = {_misconception(concept, ops)};
+    switch (concept) {
+      case ConceptId.multiply2x1:
+        final a = s(ops[0]);
+        final b = ops[1];
+        final tens = digit(a, 0), ones = digit(a, 1);
+        known.addAll([
+          tens * b + ones * b,
+          int.parse('${tens}0') + ones * b,
+          ops[0] + b,
+          int.parse('${tens * b}${ones * b}'),
+          correct - b,
+          correct + b,
+        ]);
+      case ConceptId.multiply2x2:
+        final a = s(ops[0]), b = s(ops[1]);
+        known.addAll([
+          ops[0] * digit(b, 1) + ops[0] * digit(b, 0),
+          correct - int.parse('${digit(a, 1) * digit(b, 0)}0'),
+          correct - int.parse('${digit(a, 0) * digit(b, 1)}0'),
+          for (final off in const [10, 100]) ...[correct - off, correct + off],
+        ]);
+      case ConceptId.addRegroup:
+        final a = s(ops[0]).padLeft(3, '0'), b = s(ops[1]).padLeft(3, '0');
+        final cols = [for (var i = 0; i < 3; i++) digit(a, i) + digit(b, i)];
+        known.addAll([
+          int.parse(cols.join()),
+          if (cols[2] >= 10) correct - 10,
+          if (cols[1] >= 10) correct - 100,
+          ops[0] - ops[1],
+        ]);
+      case ConceptId.subtractCountUp:
+        final a = s(ops[0]).padLeft(3, '0'), b = s(ops[1]).padLeft(3, '0');
+        final borrowOnes = digit(a, 2) < digit(b, 2);
+        final borrowTens = digit(a, 1) - (borrowOnes ? 1 : 0) < digit(b, 1);
+        known.addAll([
+          ops[0] + ops[1],
+          if (borrowOnes) correct + 10,
+          if (borrowTens) correct + 100,
+          for (final j in _countUpJumps(ops[1], ops[0])) correct - j,
+        ]);
+      case ConceptId.divideByOneDigit:
+        final q = s(correct);
+        known.addAll([
+          digit(q, q.length - 1),
+          correct - 1,
+          correct + 1,
+          ops[0] * ops[1],
+          ops[0] - ops[1],
+        ]);
+      case ConceptId.equivalentFractions:
+        known.addAll([ops[0], ops[0] * ops[1] * ops[2], ops[2]]);
+    }
+    return known;
+  }
+
+  /// Counting up from [from] to [to] by friendly numbers, written as a walk:
+  /// to a round ten, a round hundred, whole hundreds, whole tens, then ones.
+  static List<int> _countUpJumps(int from, int to) {
+    final jumps = <int>[];
+    var at = from;
+    void jumpTo(int target) {
+      if (target > at && target <= to) {
+        jumps.add(target - at);
+        at = target;
+      }
+    }
+
+    jumpTo(at + (10 - at % 10) % 10);
+    jumpTo(at + (100 - at % 100) % 100);
+    jumpTo(to - to % 100);
+    jumpTo(to - to % 10);
+    jumpTo(to);
+    return jumps;
   }
 
   static bool _mentions(String text, int n) =>

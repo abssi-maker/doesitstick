@@ -25,10 +25,19 @@ const _steps = [
         'independent way. A misread problem is dropped, never trusted.',
   ),
   (
+    '🔎',
+    'Help for the wrong answer they gave',
+    'When you type what your child said, server code has already worked '
+        'out the usual slips for those exact numbers (a lost carry, a '
+        'skipped box) and the question to ask next. The checker recomputes '
+        'every slip, and no hint is allowed to state the answer.',
+  ),
+  (
     '👪',
-    'Your partner follows live',
-    'Serverpod streams push each answer to the other parent’s phone the '
-        'moment it’s marked.',
+    'Your partner is there, even from work',
+    'A Serverpod stream shows the other parent which problem you’re on, '
+        'live, and carries their cheer to the table in a second or two. '
+        'Each answer reaches both phones the moment it’s marked.',
   ),
   (
     '🔁',

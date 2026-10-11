@@ -5,4 +5,9 @@ fields:
   message: String
   actorName: String?
   cardId: int?
+  ### Presence: the problem the sender is on (0-based) and what they're
+  ### doing there (`working`, `hint`, `done`, `following`, or `around` off any card;
+  ### `gone` when the app is closed).
+  step: int?
+  detail: String?
   at: DateTime

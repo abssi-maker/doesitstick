@@ -17,6 +17,11 @@ fields:
   methodNote: String
   listenFor: String
   hint: String
+  ### The first step done together: the help between [hint] and the
+  ### full walk-through in [methodNote]. Never states the answer.
+  nextStep: String?
+  ### Common wrong answers for these numbers, each re-checked by code.
+  slips: List<Slip>?
   checkedByCode: bool
   ### True when the numbers came off the child's own worksheet.
   fromWorksheet: bool, default=false

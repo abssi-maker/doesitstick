@@ -21,6 +21,14 @@ Question _q(int id, int pos, QuestionStyle style) => Question(
   methodNote: 'Box method: 40 × 7 = 280 and 6 × 7 = 42. 280 + 42 = 322.',
   listenFor: 'Splits 46 into 40 and 6.',
   hint: 'Split 46 into 40 and 6. What is 40 × 7?',
+  nextStep: '40 × 7 = 280. Now: what is 6 × 7? Then add the two.',
+  slips: [
+    Slip(
+      answer: 282,
+      what: 'The 4 tens from 6 × 7 = 42 got lost.',
+      ask: 'What is 6 × 7? Where did the 40 go?',
+    ),
+  ],
   checkedByCode: true,
 );
 
@@ -109,13 +117,11 @@ void main() {
       question: _q(11, 0, QuestionStyle.solve),
       marks: [],
       latest: Mark(
-        id: 1,
         questionId: 11,
         cardId: 1,
         familyId: 1,
         outcome: Outcome.gotAnswer,
         parentName: 'Sam',
-        clientMarkId: 'x',
         markedAt: DateTime.utc(2026, 10, 9),
       ),
     );
@@ -124,69 +130,119 @@ void main() {
     expect(m.sync, MarkSync.shared);
   });
 
-  testWidgets('Given tonight’s card, when all three are marked offline, then '
-      'answers stay visible and each says it is saved on this phone', (
-    tester,
-  ) async {
-    tester.view.physicalSize = const Size(1170, 7000);
+  Future<FamilyController> openCard(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1170, 5000);
     tester.view.devicePixelRatio = 3;
     addTearDown(tester.view.reset);
     final c = await _offlineController();
-
     await tester.pumpWidget(
       MaterialApp(
         home: FamilyScope(controller: c, child: const CardScreen(cardId: 1)),
       ),
     );
-    expect(find.text('322'), findsNWidgets(3));
-    expect(find.text('✓ Answer checked by code'), findsNWidgets(3));
-    expect(find.text('Offline (demo)'), findsOneWidget);
+    return c;
+  }
+
+  Future<void> tap(WidgetTester tester, Finder f) async {
+    await tester.ensureVisible(f);
+    await tester.pumpAndSettle();
+    await tester.tap(f);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('Given tonight’s card offline, when each problem is answered '
+      'and explained, then all three are saved on this phone', (tester) async {
+    final c = await openCard(tester);
+    expect(find.text('✓ Every answer double-checked  ›'), findsOneWidget);
+    expect(
+      find.text('Offline (try-out) · saving on this phone'),
+      findsOneWidget,
+    );
 
     for (final id in [11, 12, 13]) {
-      final button = find.byKey(Key('mark-$id-explainedWhy'));
-      await tester.ensureVisible(button);
-      await tester.pump();
-      await tester.tap(button);
-      await tester.pump();
+      expect(find.text('322'), findsOneWidget);
+      await tap(tester, find.byKey(const Key('gotIt')));
+      if (id != 12) expect(find.text('“How do you know?”'), findsOneWidget);
+      await tap(tester, find.byKey(Key('mark-$id-explainedWhy')));
+      expect(find.text('Saved on this phone'), findsOneWidget);
+      await tap(tester, find.byKey(const Key('nextProblem')));
     }
-    expect(find.text('Saved on this phone'), findsNWidgets(3));
-    expect(find.text('Done, together 🎉'), findsOneWidget);
+    expect(find.text('Done, calmly 🎉'), findsOneWidget);
+    expect(c.outbox.map((m) => m.outcome).toSet(), {Outcome.explainedWhy});
     expect(c.outbox, hasLength(3));
-
     await tester.pumpWidget(const SizedBox());
   });
 
-  testWidgets('Given a stuck child, when the parent climbs the hint ladder '
-      'to the kind ending, then the question is marked not yet', (
+  testWidgets('Given a child who says 282, when the parent checks it, then '
+      'the lost carry is named with a question to ask, and getting it after '
+      'that is marked with a hint', (tester) async {
+    final c = await openCard(tester);
+    await tap(tester, find.byKey(const Key('notQuite')));
+    expect(
+      find.text('Take a breath. Stuck is where learning happens.'),
+      findsOneWidget,
+    );
+    await tester.enterText(find.byKey(const Key('saidField')), '282');
+    await tap(tester, find.byKey(const Key('checkSaid')));
+    expect(find.text('🔎 A common slip'), findsOneWidget);
+    expect(find.text('The 4 tens from 6 × 7 = 42 got lost.'), findsOneWidget);
+    expect(
+      find.text('Ask: “What is 6 × 7? Where did the 40 go?”'),
+      findsOneWidget,
+    );
+    await tap(tester, find.byKey(const Key('mark-11-withHint')));
+    expect(c.outbox.single.outcome, Outcome.withHint);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Given a child who says 9, then the parent is told to ask how '
+      'they got it', (tester) async {
+    await openCard(tester);
+    await tap(tester, find.byKey(const Key('notQuite')));
+    await tester.enterText(find.byKey(const Key('saidField')), '9');
+    await tap(tester, find.byKey(const Key('checkSaid')));
+    expect(find.text('🔎 Not one of the usual slips'), findsOneWidget);
+    expect(find.text('Ask: “How did you get that? Show me.”'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Given a child who says the right answer, then the parent is '
+      'asked to find out why', (tester) async {
+    await openCard(tester);
+    await tap(tester, find.byKey(const Key('notQuite')));
+    await tester.enterText(find.byKey(const Key('saidField')), '322');
+    await tap(tester, find.byKey(const Key('checkSaid')));
+    expect(find.text('🎉 That’s right!'), findsOneWidget);
+    await tap(tester, find.byKey(const Key('rightAskWhy')));
+    expect(find.text('“How do you know?”'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  testWidgets('Given a stuck child, when the parent goes step by step to the '
+      'end, then help never skips a step and it ends kindly as not yet', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1170, 7000);
-    tester.view.devicePixelRatio = 3;
-    addTearDown(tester.view.reset);
-    final c = await _offlineController();
-    await tester.pumpWidget(
-      MaterialApp(
-        home: FamilyScope(controller: c, child: const CardScreen(cardId: 1)),
-      ),
-    );
-    final next = find.byKey(const Key('nextHint')).first;
-    await tester.tap(next);
-    await tester.pump();
-    expect(find.textContaining('Split 46 into 40 and 6'), findsWidgets);
+    final c = await openCard(tester);
+    await tap(tester, find.byKey(const Key('notQuite')));
+    await tap(tester, find.byKey(const Key('saidNothing')));
     expect(
-      find.text('If they get it now, mark “With a hint”.'),
+      find.text('“Split 46 into 40 and 6. What is 40 × 7?”'),
       findsOneWidget,
     );
-    await tester.tap(find.byKey(const Key('nextHint')).first);
-    await tester.pump();
-    await tester.tap(find.byKey(const Key('nextHint')).first);
-    await tester.pump();
+    await tap(tester, find.byKey(const Key('nextHint')));
     expect(
-      find.text('“Great one to ask your teacher about tomorrow!”'),
+      find.text('40 × 7 = 280. Now: what is 6 × 7? Then add the two.'),
       findsOneWidget,
     );
+    await tap(tester, find.byKey(const Key('nextHint')));
+    expect(find.textContaining('280 + 42 = 322'), findsOneWidget);
+    await tap(tester, find.byKey(const Key('nextHint')));
     expect(c.outbox.single.outcome, Outcome.notYet);
     expect(c.outbox.single.questionId, 11);
+    expect(
+      find.text('“Not yet is fine. We’ll try it again another day.”'),
+      findsOneWidget,
+    );
     await tester.pumpWidget(const SizedBox());
   });
 }

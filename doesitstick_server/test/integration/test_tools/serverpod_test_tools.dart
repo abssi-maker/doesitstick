@@ -15,6 +15,7 @@ import 'dart:async' as _ida;
 import 'dart:io' as _idi;
 import 'dart:typed_data' as _idt;
 import 'package:doesitstick_server/src/generated/card_view.dart' as _i8jepc88;
+import 'package:doesitstick_server/src/generated/cheer.dart' as _i5p289v0;
 import 'package:doesitstick_server/src/generated/concept_id.dart' as _iqejb9wz;
 import 'package:doesitstick_server/src/generated/concept_option.dart'
     as _icruhs9h;
@@ -803,6 +804,76 @@ class _FamilyEndpoint {
       _localTestStreamManager.outputStreamController,
     );
     return _localTestStreamManager.outputStreamController.stream;
+  }
+
+  _ida.Future<void> presence(
+    _ist.TestSessionBuilder sessionBuilder,
+    int? cardId,
+    int? step,
+    String detail, {
+    required bool greet,
+  }) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'family',
+            method: 'presence',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'family',
+          methodName: 'presence',
+          parameters: _ist.testObjectToJson({
+            'cardId': cardId,
+            'step': step,
+            'detail': detail,
+            'greet': greet,
+          }),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<void>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
+  }
+
+  _ida.Future<void> cheer(
+    _ist.TestSessionBuilder sessionBuilder,
+    _i5p289v0.Cheer cheer,
+  ) async {
+    return _ist.callAwaitableFunctionAndHandleExceptions(() async {
+      var _localUniqueSession =
+          (sessionBuilder as _ist.InternalTestSessionBuilder).internalBuild(
+            endpoint: 'family',
+            method: 'cheer',
+          );
+      try {
+        var _localCallContext = await _endpointDispatch.getMethodCallContext(
+          createSessionCallback: (_) => _localUniqueSession,
+          endpointPath: 'family',
+          methodName: 'cheer',
+          parameters: _ist.testObjectToJson({'cheer': cheer}),
+          serializationManager: _serializationManager,
+        );
+        var _localReturnValue =
+            await (_localCallContext.method.call(
+                  _localUniqueSession,
+                  _localCallContext.arguments,
+                )
+                as _ida.Future<void>);
+        return _localReturnValue;
+      } finally {
+        await _localUniqueSession.close();
+      }
+    });
   }
 }
 

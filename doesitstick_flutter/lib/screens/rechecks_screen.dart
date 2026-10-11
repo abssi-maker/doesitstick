@@ -16,7 +16,8 @@ const _conceptTitles = {
 };
 
 class RechecksScreen extends StatelessWidget {
-  const RechecksScreen({super.key});
+  final VoidCallback onTryItOut;
+  const RechecksScreen({super.key, required this.onTryItOut});
 
   @override
   Widget build(BuildContext context) {
@@ -32,7 +33,7 @@ class RechecksScreen extends StatelessWidget {
       children: [
         const ScreenHeader(
           eyebrow: 'Did it stick?',
-          title: 'A 1-minute check, days later',
+          title: 'A quick check, days later',
         ),
         const SizedBox(height: 8),
         Text(
@@ -71,7 +72,7 @@ class RechecksScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  child: const Text('Start re-check · 1 min'),
+                  child: const Text('Start re-check'),
                 ),
               ],
             ),
@@ -104,56 +105,12 @@ class RechecksScreen extends StatelessWidget {
               ),
             ),
         ],
-        const SizedBox(height: 20),
-        Panel(
-          color: C.grapeS,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'For judges: jump ahead in time',
-                style: t.titleMedium!.copyWith(color: C.grapeT),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'No need to wait a week. Runs the re-checks due in the next '
-                'days right now (marked as fast-forwarded on the server).',
-                style: t.bodySmall!.copyWith(color: C.grapeT),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (final days in const [2, 7]) ...[
-                    Expanded(
-                      child: OutlinedButton(
-                        key: Key('jump-$days'),
-                        onPressed: c.busy
-                            ? null
-                            : () async {
-                                try {
-                                  final made = await c.jumpAhead(days);
-                                  if (context.mounted && made > 0) {
-                                    toast(
-                                      context,
-                                      '$made re-check${made > 1 ? 's' : ''} ready',
-                                    );
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    toast(context, errorText(e));
-                                  }
-                                }
-                              },
-                        child: Text('Jump +$days days'),
-                      ),
-                    ),
-                    if (days == 2) const SizedBox(width: 10),
-                  ],
-                ],
-              ),
-            ],
+        if (scheduled.isNotEmpty)
+          TextButton(
+            key: const Key('previewRechecks'),
+            onPressed: onTryItOut,
+            child: const Text('Don’t want to wait? Try it out in Family'),
           ),
-        ),
       ],
     );
   }

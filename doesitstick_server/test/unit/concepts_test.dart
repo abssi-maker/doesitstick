@@ -274,4 +274,77 @@ void main() {
       }
     });
   });
+
+  group('Given a child who says something else on 46 × 7', () {
+    final q = QuestionGenerator.build(
+      ConceptId.multiply2x1,
+      QuestionStyle.solve,
+      1,
+      [46, 7],
+    );
+    Slip? said(int answer) =>
+        q.slips.where((s) => s.answer == answer).firstOrNull;
+
+    test('when they say 282 then the lost carry is named, with a question '
+        'to ask that does not give the answer', () {
+      final slip = said(282)!;
+      expect(slip.what, contains('6 × 7 = 42'));
+      expect(slip.ask, 'What is 6 × 7? Where did the 40 go?');
+    });
+
+    test('when they say 70 or 53 then place value or adding is named', () {
+      expect(said(70)!.what, contains('4 × 7 instead of 40 × 7'));
+      expect(said(53)!.what, contains('added'));
+    });
+
+    test('when they say 9 then it is not a known slip', () {
+      expect(said(9), isNull);
+    });
+
+    test('when they are stuck then the next step does the first box only', () {
+      expect(q.nextStep, '40 × 7 = 280. Now: what is 6 × 7? Then add the two.');
+    });
+  });
+
+  group('Given tampered coaching', () {
+    final q = QuestionGenerator.build(
+      ConceptId.multiply2x1,
+      QuestionStyle.solve,
+      1,
+      [46, 7],
+    );
+    GeneratedQuestion withSlips(List<Slip> slips, {String? nextStep}) =>
+        GeneratedQuestion(
+          concept: q.concept,
+          style: q.style,
+          seed: q.seed,
+          operands: q.operands,
+          prompt: q.prompt,
+          expectedAnswer: q.expectedAnswer,
+          answerValue: q.answerValue,
+          methodNote: q.methodNote,
+          listenFor: q.listenFor,
+          hint: q.hint,
+          nextStep: nextStep ?? q.nextStep,
+          slips: slips,
+        );
+
+    test('when a slip is not a modeled mistake then it is rejected', () {
+      final bad = withSlips([Slip(answer: 300, what: 'x', ask: 'y')]);
+      expect(QuestionChecker.check(bad), contains(contains('not a modeled')));
+    });
+
+    test('when a slip is the right answer then it is rejected', () {
+      final bad = withSlips([Slip(answer: 322, what: 'x', ask: 'y')]);
+      expect(QuestionChecker.check(bad), contains(contains('right answer')));
+    });
+
+    test('when help states the answer then it is rejected', () {
+      final bad = withSlips(q.slips, nextStep: '280 + 42 = 322.');
+      expect(
+        QuestionChecker.check(bad),
+        contains(contains('gives the answer')),
+      );
+    });
+  });
 }

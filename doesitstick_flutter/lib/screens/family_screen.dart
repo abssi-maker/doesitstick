@@ -97,34 +97,7 @@ class FamilyScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        Panel(
-          color: C.sunS,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      'For judges: try offline mode',
-                      style: t.titleMedium!.copyWith(color: C.sunT),
-                    ),
-                  ),
-                  Switch(
-                    key: const Key('demoOffline'),
-                    value: c.demoOffline,
-                    onChanged: c.setDemoOffline,
-                  ),
-                ],
-              ),
-              Text(
-                'Pretend the Wi-Fi dropped: marks are saved on this phone and '
-                'sent when you switch back. Real network drops work the same.',
-                style: t.bodySmall!.copyWith(color: C.sunT),
-              ),
-            ],
-          ),
-        ),
+        const _TryItOut(),
         const SizedBox(height: 16),
         OutlinedButton.icon(
           key: const Key('howItWorks'),
@@ -142,6 +115,89 @@ class FamilyScreen extends StatelessWidget {
           child: const Text('Sign out'),
         ),
       ],
+    );
+  }
+}
+
+/// See the parts of the app that normally take days or a bad connection,
+/// right now.
+class _TryItOut extends StatelessWidget {
+  const _TryItOut();
+
+  @override
+  Widget build(BuildContext context) {
+    final c = FamilyScope.of(context);
+    final t = Theme.of(context).textTheme;
+    return Panel(
+      key: const Key('tryItOut'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Try it out', style: t.titleMedium),
+          const SizedBox(height: 12),
+          Text('See the re-checks now', style: t.titleSmall),
+          const SizedBox(height: 2),
+          Text(
+            'Re-checks come back on day 2 and day 7. Skip ahead to see them '
+            'today.',
+            style: t.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              for (final days in const [2, 7]) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    key: Key('jump-$days'),
+                    onPressed: c.busy
+                        ? null
+                        : () async {
+                            try {
+                              final made = await c.jumpAhead(days);
+                              if (context.mounted) {
+                                toast(
+                                  context,
+                                  made == 0
+                                      ? 'Nothing due yet. Finish tonight’s '
+                                            'card first.'
+                                      : '$made re-check${made > 1 ? 's' : ''} '
+                                            'ready in “Did it stick?”',
+                                );
+                              }
+                            } catch (e) {
+                              if (context.mounted) toast(context, errorText(e));
+                            }
+                          },
+                    child: Text('Day $days'),
+                  ),
+                ),
+                if (days == 2) const SizedBox(width: 10),
+              ],
+            ],
+          ),
+          const Divider(height: 28, color: C.line),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Try it with no connection',
+                  style: t.titleSmall,
+                ),
+              ),
+              Switch(
+                key: const Key('demoOffline'),
+                value: c.demoOffline,
+                onChanged: c.setDemoOffline,
+              ),
+            ],
+          ),
+          Text(
+            'Marks save on this phone and sync when you switch back, the same '
+            'as when the Wi-Fi really drops.',
+            style: t.bodySmall,
+          ),
+        ],
+      ),
     );
   }
 }

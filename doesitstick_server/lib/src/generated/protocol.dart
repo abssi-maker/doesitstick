@@ -24,6 +24,7 @@ import 'package:serverpod_offline_sync_server/serverpod_offline_sync_server.dart
     as _izehhkf5;
 import 'card_kind.dart' as _i9emmw3b;
 import 'card_view.dart' as _iuaciou8;
+import 'cheer.dart' as _ic7ycjzu;
 import 'concept_digest.dart' as _i85n5w8z;
 import 'concept_id.dart' as _igk9xj07;
 import 'concept_option.dart' as _in1dh818;
@@ -49,11 +50,13 @@ import 'question_view.dart' as _irhyxwad;
 import 'recheck.dart' as _ihmo3v7u;
 import 'recheck_status.dart' as _ibuccmzf;
 import 'share_link.dart' as _i71vg603;
+import 'slip.dart' as _ijxu783d;
 import 'weekly_digest.dart' as _ioeko3ow;
 import 'worksheet.dart' as _itpm72xa;
 import 'worksheet_status.dart' as _i3lw21mu;
 export 'card_kind.dart';
 export 'card_view.dart';
+export 'cheer.dart';
 export 'concept_digest.dart';
 export 'concept_id.dart';
 export 'concept_option.dart';
@@ -75,6 +78,7 @@ export 'question_view.dart';
 export 'recheck.dart';
 export 'recheck_status.dart';
 export 'share_link.dart';
+export 'slip.dart';
 export 'weekly_digest.dart';
 export 'worksheet.dart';
 export 'worksheet_status.dart';
@@ -434,6 +438,18 @@ class Protocol extends _is.DatabaseSerializationManager {
           dartType: 'String',
         ),
         _isp.ColumnDefinition(
+          name: 'nextStep',
+          columnType: _isp.ColumnType.text,
+          isNullable: true,
+          dartType: 'String?',
+        ),
+        _isp.ColumnDefinition(
+          name: 'slips',
+          columnType: _isp.ColumnType.json,
+          isNullable: true,
+          dartType: 'List<protocol:Slip>?',
+        ),
+        _isp.ColumnDefinition(
           name: 'checkedByCode',
           columnType: _isp.ColumnType.boolean,
           isNullable: false,
@@ -765,6 +781,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _iuaciou8.CardView) {
       return _iuaciou8.CardView.fromJson(data) as T;
     }
+    if (t == _ic7ycjzu.Cheer) {
+      return _ic7ycjzu.Cheer.fromJson(data) as T;
+    }
     if (t == _i85n5w8z.ConceptDigest) {
       return _i85n5w8z.ConceptDigest.fromJson(data) as T;
     }
@@ -834,6 +853,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _i71vg603.ShareLink) {
       return _i71vg603.ShareLink.fromJson(data) as T;
     }
+    if (t == _ijxu783d.Slip) {
+      return _ijxu783d.Slip.fromJson(data) as T;
+    }
     if (t == _ioeko3ow.WeeklyDigest) {
       return _ioeko3ow.WeeklyDigest.fromJson(data) as T;
     }
@@ -848,6 +870,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == _is.getType<_iuaciou8.CardView?>()) {
       return (data != null ? _iuaciou8.CardView.fromJson(data) : null) as T;
+    }
+    if (t == _is.getType<_ic7ycjzu.Cheer?>()) {
+      return (data != null ? _ic7ycjzu.Cheer.fromJson(data) : null) as T;
     }
     if (t == _is.getType<_i85n5w8z.ConceptDigest?>()) {
       return (data != null ? _i85n5w8z.ConceptDigest.fromJson(data) : null)
@@ -932,6 +957,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     if (t == _is.getType<_i71vg603.ShareLink?>()) {
       return (data != null ? _i71vg603.ShareLink.fromJson(data) : null) as T;
     }
+    if (t == _is.getType<_ijxu783d.Slip?>()) {
+      return (data != null ? _ijxu783d.Slip.fromJson(data) : null) as T;
+    }
     if (t == _is.getType<_ioeko3ow.WeeklyDigest?>()) {
       return (data != null ? _ioeko3ow.WeeklyDigest.fromJson(data) : null) as T;
     }
@@ -977,6 +1005,18 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (t == List<int>) {
       return (data as List).map((e) => deserialize<int>(e)).toList() as T;
+    }
+    if (t == List<_ijxu783d.Slip>) {
+      return (data as List).map((e) => deserialize<_ijxu783d.Slip>(e)).toList()
+          as T;
+    }
+    if (t == _is.getType<List<_ijxu783d.Slip>?>()) {
+      return (data != null
+              ? (data as List)
+                    .map((e) => deserialize<_ijxu783d.Slip>(e))
+                    .toList()
+              : null)
+          as T;
     }
     if (t == List<_i5z4rsow.Mark>) {
       return (data as List).map((e) => deserialize<_i5z4rsow.Mark>(e)).toList()
@@ -1028,6 +1068,7 @@ class Protocol extends _is.DatabaseSerializationManager {
     return switch (type) {
       _i9emmw3b.CardKind => 'CardKind',
       _iuaciou8.CardView => 'CardView',
+      _ic7ycjzu.Cheer => 'Cheer',
       _i85n5w8z.ConceptDigest => 'ConceptDigest',
       _igk9xj07.ConceptId => 'ConceptId',
       _in1dh818.ConceptOption => 'ConceptOption',
@@ -1053,6 +1094,7 @@ class Protocol extends _is.DatabaseSerializationManager {
       _ihmo3v7u.Recheck => 'Recheck',
       _ibuccmzf.RecheckStatus => 'RecheckStatus',
       _i71vg603.ShareLink => 'ShareLink',
+      _ijxu783d.Slip => 'Slip',
       _ioeko3ow.WeeklyDigest => 'WeeklyDigest',
       _itpm72xa.Worksheet => 'Worksheet',
       _i3lw21mu.WorksheetStatus => 'WorksheetStatus',
@@ -1074,6 +1116,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'CardKind';
       case _iuaciou8.CardView():
         return 'CardView';
+      case _ic7ycjzu.Cheer():
+        return 'Cheer';
       case _i85n5w8z.ConceptDigest():
         return 'ConceptDigest';
       case _igk9xj07.ConceptId():
@@ -1120,6 +1164,8 @@ class Protocol extends _is.DatabaseSerializationManager {
         return 'RecheckStatus';
       case _i71vg603.ShareLink():
         return 'ShareLink';
+      case _ijxu783d.Slip():
+        return 'Slip';
       case _ioeko3ow.WeeklyDigest():
         return 'WeeklyDigest';
       case _itpm72xa.Worksheet():
@@ -1163,6 +1209,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'CardView') {
       return deserialize<_iuaciou8.CardView>(data['data']);
+    }
+    if (dataClassName == 'Cheer') {
+      return deserialize<_ic7ycjzu.Cheer>(data['data']);
     }
     if (dataClassName == 'ConceptDigest') {
       return deserialize<_i85n5w8z.ConceptDigest>(data['data']);
@@ -1236,6 +1285,9 @@ class Protocol extends _is.DatabaseSerializationManager {
     }
     if (dataClassName == 'ShareLink') {
       return deserialize<_i71vg603.ShareLink>(data['data']);
+    }
+    if (dataClassName == 'Slip') {
+      return deserialize<_ijxu783d.Slip>(data['data']);
     }
     if (dataClassName == 'WeeklyDigest') {
       return deserialize<_ioeko3ow.WeeklyDigest>(data['data']);

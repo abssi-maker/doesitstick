@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:doesitstick_client/doesitstick_client.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:image_picker/image_picker.dart';
 import 'package:serverpod_auth_idp_flutter/serverpod_auth_idp_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +17,26 @@ enum SyncState { live, connecting, offline }
 
 /// What the parent sees under a marked question, in plain words.
 enum MarkSync { savedOnPhone, sending, shared }
+
+/// Where the other parent is, from their phone's presence pings.
+class PartnerPresence {
+  final String name;
+  final int? cardId;
+  final int? step;
+  final String detail;
+  final DateTime seen;
+  const PartnerPresence(
+    this.name,
+    this.cardId,
+    this.step,
+    this.detail,
+    this.seen,
+  );
+
+  /// Sitting with the child on a problem right now.
+  bool get atTable =>
+      cardId != null && (detail == 'working' || detail == 'hint');
+}
 
 class EffectiveMark {
   final Outcome outcome;
@@ -60,6 +81,52 @@ class FamilyController extends ChangeNotifier {
   /// Events from the other parent (or the server), for toasts.
   Stream<FamilyEvent> get events => _events.stream;
 
+  final _cheers = StreamController<FamilyEvent>.broadcast();
+
+  /// Cheers from the other parent, shown big at the table.
+  Stream<FamilyEvent> get cheers => _cheers.stream;
+
+  PartnerPresence? _partner;
+  ({int? cardId, int? step, String detail}) _here = (
+    cardId: null,
+    step: null,
+    detail: 'around',
+  );
+  Timer? _heartbeat;
+  AppLifecycleListener? _lifecycle;
+  bool _visible = true;
+
+  /// The other parent, while their app is open (heard from recently).
+  PartnerPresence? get partnerHere {
+    final p = _partner;
+    if (p == null || p.detail == 'gone' || sync != SyncState.live) return null;
+    if (DateTime.now().difference(p.seen) > const Duration(seconds: 75)) {
+      return null;
+    }
+    return p;
+  }
+
+  /// Where this parent is, for the other parent's phone. Repeated every
+  /// 30 seconds while the app is open; only streamed, never stored.
+  void setPresence({int? cardId, int? step, required String detail}) {
+    final next = (cardId: cardId, step: step, detail: detail);
+    if (next == _here) return;
+    _here = next;
+    _sendPresence();
+  }
+
+  void _sendPresence({bool gone = false, bool greet = false}) {
+    if (demoOffline || sync != SyncState.live || home == null) return;
+    final h = _here;
+    unawaited(
+      client.family
+          .presence(h.cardId, h.step, gone ? 'gone' : h.detail, greet: greet)
+          .catchError((_) {}),
+    );
+  }
+
+  Future<void> sendCheer(Cheer cheer) => client.family.cheer(cheer);
+
   String get me => home?.family.me ?? '';
   String? get partner => home?.family.parents.where((p) => p != me).firstOrNull;
 
@@ -69,6 +136,20 @@ class FamilyController extends ChangeNotifier {
     notifyListeners();
     // Offline at launch: marks still save, from the cached family.
     _openOffline();
+    _heartbeat = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_visible) _sendPresence();
+      _notify(); // lets a quiet partner's presence expire
+    });
+    _lifecycle = AppLifecycleListener(
+      onHide: () {
+        _visible = false;
+        _sendPresence(gone: true);
+      },
+      onShow: () {
+        _visible = true;
+        _sendPresence();
+      },
+    );
     try {
       concepts = await client.family.concepts();
     } catch (_) {}
@@ -166,6 +247,27 @@ class FamilyController extends ChangeNotifier {
           _notify();
           refresh();
           flush();
+          _sendPresence(greet: true);
+          return;
+        }
+        if (e.kind == 'presence' || e.kind == 'cheer') {
+          if (e.actorName == me) return;
+          if (e.kind == 'cheer') {
+            _cheers.add(e);
+            return;
+          }
+          // A partner who just connected hears back at once, so both
+          // phones know where the other is without waiting for a ping.
+          final arrived = partnerHere == null || e.message == 'hi';
+          _partner = PartnerPresence(
+            e.actorName ?? '',
+            e.cardId,
+            e.step,
+            e.detail ?? 'around',
+            DateTime.now(),
+          );
+          if (arrived) _sendPresence();
+          _notify();
           return;
         }
         if (e.actorName != me) _events.add(e);
@@ -404,6 +506,9 @@ class FamilyController extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _refreshTimer?.cancel();
+    _heartbeat?.cancel();
+    _lifecycle?.dispose();
+    _cheers.close();
     unawaited(_offline?.close());
     _retry?.cancel();
     _sub?.cancel();

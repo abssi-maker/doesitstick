@@ -13,6 +13,7 @@
 import 'dart:async' as _ida;
 import 'dart:typed_data' as _idt;
 import 'package:doesitstick_client/src/protocol/card_view.dart' as _idhtdmyd;
+import 'package:doesitstick_client/src/protocol/cheer.dart' as _ih9o39xc;
 import 'package:doesitstick_client/src/protocol/concept_id.dart' as _iab13f5m;
 import 'package:doesitstick_client/src/protocol/concept_option.dart'
     as _im3fhzym;
@@ -350,6 +351,35 @@ class EndpointFamily extends _isc.EndpointRef {
         'updates',
         {},
         {},
+      );
+
+  /// Tells the other parent where this one is: on a problem with the child
+  /// ([cardId], [step]), or just around. Only streamed, never stored. A
+  /// phone that has just connected sets [greet], so the other phone answers
+  /// at once instead of at its next ping.
+  _ida.Future<void> presence(
+    int? cardId,
+    int? step,
+    String detail, {
+    required bool greet,
+  }) => caller.callServerEndpoint<void>(
+    'family',
+    'presence',
+    {
+      'cardId': cardId,
+      'step': step,
+      'detail': detail,
+      'greet': greet,
+    },
+  );
+
+  /// A preset cheer from the parent who is away, shown big at the table so
+  /// it can be read out to the child.
+  _ida.Future<void> cheer(_ih9o39xc.Cheer cheer) =>
+      caller.callServerEndpoint<void>(
+        'family',
+        'cheer',
+        {'cheer': cheer},
       );
 }
 

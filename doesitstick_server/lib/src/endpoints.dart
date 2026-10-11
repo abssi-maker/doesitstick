@@ -131,6 +131,77 @@ class FamilyEndpoint extends Endpoint {
       FamilyService.channel(member.familyId),
     );
   }
+
+  static const _presence = {
+    'working',
+    'hint',
+    'done',
+    'following',
+    'around',
+    'gone',
+  };
+
+  /// Tells the other parent where this one is: on a problem with the child
+  /// ([cardId], [step]), or just around. Only streamed, never stored. A
+  /// phone that has just connected sets [greet], so the other phone answers
+  /// at once instead of at its next ping.
+  Future<void> presence(
+    Session session,
+    int? cardId,
+    int? step,
+    String detail, {
+    required bool greet,
+  }) async {
+    final member = await FamilyService.requireMember(session);
+    if (!_presence.contains(detail)) {
+      throw DidItStickException(message: 'Unknown presence.');
+    }
+    if (cardId != null) {
+      final card = await QuestionCard.db.findById(session, cardId);
+      if (card == null || card.familyId != member.familyId) {
+        throw DidItStickException(message: 'Card not found.');
+      }
+    }
+    await session.messages.postMessage(
+      FamilyService.channel(member.familyId),
+      FamilyEvent(
+        kind: 'presence',
+        message: greet ? 'hi' : '',
+        actorName: member.displayName,
+        cardId: cardId,
+        step: step,
+        detail: detail,
+        at: DateTime.now().toUtc(),
+      ),
+    );
+  }
+
+  static final _lastCheer = <int, DateTime>{};
+
+  /// A preset cheer from the parent who is away, shown big at the table so
+  /// it can be read out to the child.
+  Future<void> cheer(Session session, Cheer cheer) async {
+    final member = await FamilyService.requireMember(session);
+    final now = DateTime.now().toUtc();
+    final last = _lastCheer[member.id!];
+    if (last != null && now.difference(last) < const Duration(seconds: 2)) {
+      return;
+    }
+    _lastCheer[member.id!] = now;
+    final family = await Family.db.findById(session, member.familyId);
+    final child = family!.childName;
+    await FamilyService.postEvent(
+      session,
+      member.familyId,
+      kind: 'cheer',
+      message: switch (cheer) {
+        Cheer.proud => 'Proud of you for sticking with it, $child!',
+        Cheer.thinking => 'Great thinking, $child!',
+        Cheer.keepGoing => 'Keep going, $child. You’ve got this!',
+      },
+      actorName: member.displayName,
+    );
+  }
 }
 
 /// Worksheet photo upload and topic choice.

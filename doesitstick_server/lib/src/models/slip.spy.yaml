@@ -1,0 +1,7 @@
+### A wrong answer children often give for one problem, worked out by code
+### from its numbers: what probably happened, and the question to ask next.
+class: Slip
+fields:
+  answer: int
+  what: String
+  ask: String

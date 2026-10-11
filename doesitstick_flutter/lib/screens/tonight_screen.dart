@@ -41,18 +41,20 @@ class TonightScreen extends StatelessWidget {
       children: [
         ScreenHeader(eyebrow: 'Tonight', title: '$child’s homework, calmly'),
         const SizedBox(height: 16),
+        const _LiveAtTable(),
         if (rechecks.isNotEmpty) ...[
           Panel(
-            color: C.sunS,
+            color: C.skyS,
             child: Row(
               children: [
-                const Text('⏰', style: TextStyle(fontSize: 26)),
+                const Text('🔁', style: TextStyle(fontSize: 26)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    '${rechecks.length} re-check${rechecks.length > 1 ? 's' : ''} '
-                    'ready · about 1 min',
-                    style: t.titleMedium!.copyWith(color: C.sunT),
+                    rechecks.length > 1
+                        ? '${rechecks.length} quick re-checks, when you’re ready'
+                        : 'A quick re-check, when you’re ready',
+                    style: t.titleMedium!.copyWith(color: C.skyT),
                   ),
                 ),
                 TextButton(
@@ -139,6 +141,182 @@ class TonightScreen extends StatelessWidget {
   }
 }
 
+/// What the parent who's away sees while the other one sits with the
+/// child: the problem they're on, live, and three cheers to send.
+class _LiveAtTable extends StatelessWidget {
+  const _LiveAtTable();
+
+  static const _cheers = [
+    (Cheer.proud, '💛', 'Proud of you'),
+    (Cheer.thinking, '🧠', 'Great thinking'),
+    (Cheer.keepGoing, '🙌', 'Keep going'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final c = FamilyScope.of(context);
+    final p = c.partnerHere;
+    final card = p?.cardId == null ? null : c.cardById(p!.cardId!);
+    if (p == null || card == null || !p.atTable) {
+      return const SizedBox.shrink();
+    }
+    final t = Theme.of(context).textTheme;
+    final child = c.home!.family.childName;
+    final step = (p.step ?? 0).clamp(0, card.questions.length - 1);
+    final q = card.questions[step].question;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Panel(
+        key: const Key('liveAtTable'),
+        color: C.mintS,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '● Live now',
+                    style: t.titleSmall!.copyWith(color: C.mintT),
+                  ),
+                ),
+                Text(
+                  'Problem ${step + 1} of ${card.questions.length}',
+                  style: t.bodySmall!.copyWith(color: C.mintT),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text('“${q.prompt}”', style: t.titleLarge),
+            const SizedBox(height: 4),
+            Text(
+              p.detail == 'hint'
+                  ? '💡 Working through it with a hint'
+                  : '${p.name} and $child are on it',
+              style: t.bodyMedium!.copyWith(color: C.mintT),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                for (var i = 0; i < card.questions.length; i++)
+                  Expanded(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      height: 8,
+                      margin: EdgeInsets.only(
+                        right: i < card.questions.length - 1 ? 6 : 0,
+                      ),
+                      decoration: BoxDecoration(
+                        color: c.effectiveMark(card.questions[i]) != null
+                            ? C.mint
+                            : (i == step ? C.paper : C.line),
+                        borderRadius: BorderRadius.circular(99),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text('Send $child a cheer', style: t.titleSmall),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                for (final (cheer, emoji, label) in _cheers) ...[
+                  Expanded(
+                    child: _CheerButton(
+                      key: Key('cheer-${cheer.name}'),
+                      emoji: emoji,
+                      label: label,
+                      onTap: () async {
+                        try {
+                          await c.sendCheer(cheer);
+                          if (context.mounted) {
+                            toast(context, 'Sent. ${p.name} will read it out.');
+                          }
+                        } catch (e) {
+                          if (context.mounted) toast(context, errorText(e));
+                        }
+                      },
+                    ),
+                  ),
+                  if (cheer != _cheers.last.$1) const SizedBox(width: 8),
+                ],
+              ],
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              key: const Key('followAlong'),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => FamilyScope(
+                    controller: c,
+                    child: CardScreen(cardId: card.card.id!, following: true),
+                  ),
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                foregroundColor: C.mintT,
+              ),
+              child: const Text('Follow along ›'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CheerButton extends StatelessWidget {
+  final String emoji;
+  final String label;
+  final VoidCallback onTap;
+  const _CheerButton({
+    super.key,
+    required this.emoji,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: C.paper,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+          child: Column(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 26)),
+              const SizedBox(height: 4),
+              // Two lines tall for every label, so the three line up.
+              SizedBox(
+                height: 36,
+                child: Center(
+                  child: Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    style: const TextStyle(
+                      color: C.ink,
+                      fontSize: 13,
+                      height: 1.25,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Three steps, shown before the first worksheet so the promise is clear.
 class _HowItWorks extends StatelessWidget {
   const _HowItWorks();
@@ -185,14 +363,15 @@ class _HowItWorks extends StatelessWidget {
                 'give the answer away.',
           ),
           step(
-            '♡',
-            'Know when to stop',
-            'A kind way to end when it isn’t clicking tonight.',
+            '🔎',
+            'Help for the wrong answer',
+            'Type what they said. See the likely slip, what to ask next, and '
+                'a kind way to stop.',
           ),
           step(
             '🔁',
             'See if it stuck',
-            'A 1-minute check on day 2 and day 7, with new numbers.',
+            'A quick check on day 2 and day 7, with new numbers.',
           ),
         ],
       ),
@@ -527,7 +706,7 @@ class _CardSummary extends StatelessWidget {
           Text(
             done
                 ? 'All done. We’ll check it stuck on day 2 and day 7.'
-                : '$marked of ${card.questions.length} done · a few calm minutes',
+                : '$marked of ${card.questions.length} done',
             style: t.bodySmall,
           ),
           const SizedBox(height: 14),
